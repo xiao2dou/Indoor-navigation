@@ -1,26 +1,33 @@
 package com.example.jin.hellofengmap;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import com.fengmap.android.FMDevice;
+import com.fengmap.android.FMErrorMsg;
 import com.fengmap.android.FMMapSDK;
+import com.fengmap.android.data.OnFMDownloadProgressListener;
 import com.fengmap.android.map.FMMap;
+import com.fengmap.android.map.FMMapUpgradeInfo;
 import com.fengmap.android.map.FMMapView;
 import com.fengmap.android.map.FMViewMode;
 import com.fengmap.android.map.animator.FMLinearInterpolator;
 import com.fengmap.android.map.event.OnFMCompassListener;
+import com.fengmap.android.map.event.OnFMMapInitListener;
 import com.fengmap.android.map.event.OnFMSwitchGroupListener;
 import com.fengmap.android.widget.FM3DControllerButton;
 import com.fengmap.android.widget.FMFloorControllerComponent;
 import com.fengmap.android.widget.FMZoomComponent;
 
-public class MainActivity extends AppCompatActivity implements OnFMCompassListener,OnFMSwitchGroupListener {
+public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,OnFMCompassListener,OnFMSwitchGroupListener {
 
     FMMap mFMMap;
     FMMapView mapView;
@@ -32,6 +39,23 @@ public class MainActivity extends AppCompatActivity implements OnFMCompassListen
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        //动态权限申请
+        if (Build.VERSION.SDK_INT < 23) {
+            // Android 6.0 之前无需运行时权限申请
+        } else {
+            // 先检测权限   目前SDK只需2个危险权限，读和写存储卡
+            int p1 = MainActivity.this.checkSelfPermission(FMMapSDK.SDK_PERMISSIONS[0]);
+            int p2 = MainActivity.this.checkSelfPermission(FMMapSDK.SDK_PERMISSIONS[1]);
+            // 只要有任一权限没通过，则申请
+            if (p1 != PackageManager.PERMISSION_GRANTED || p2 != PackageManager.PERMISSION_GRANTED ) {
+                this.requestPermissions(FMMapSDK.SDK_PERMISSIONS,                //SDK所需权限数组
+                        FMMapSDK.SDK_PERMISSION_RESULT_CODE);   //SDK权限申请处理结果返回码
+            } else {
+                // 已经拥有权限了
+            }
+        }
+        //初始化SDK
         FMMapSDK.init(getApplication());
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -56,15 +80,24 @@ public class MainActivity extends AppCompatActivity implements OnFMCompassListen
         mFMMap = mapView.getFMMap();       //获取地图操作对象
 
         String bid = "10380";             //地图id
-        mFMMap.openMapById(bid, true);          //打开地图
-
-        onMapInitSuccess();
+        //监听地图的加载状况
+        mFMMap.setOnFMMapInitListener(this);
+        //打开地图
+        //第一个参数为地图ID，将会自动在缓存里面找地图文件，第二个参数为是否自动在线更新地图
+        mFMMap.openMapById(bid, true);
     }
 
+
     /**
-     * 加载地图成功
+     * 地图加载成功回调事件
+     *
+     * @param path 地图所在sdcard路径
      */
-    private void onMapInitSuccess(){
+    @Override
+    public void onMapInitSuccess(String path) {
+        // 加载地图主题
+        // 若本地存在对应ID的主题，将从本地读取，若不存在则在线加载。由于网络问题，无特殊要求，建议使用加载离线主题。
+        mFMMap.loadThemeById("2001");
         //显示2/3维地图控制
         init3DControllerComponent();
         //设置指北针点击事件
@@ -79,6 +112,18 @@ public class MainActivity extends AppCompatActivity implements OnFMCompassListen
         if (mZoomComponent == null) {
             initZoomComponent();
         }
+    }
+
+    /**
+     * 地图加载失败回调事件
+     *
+     * @param path      地图所在sdcard路径
+     * @param errorCode 失败加载错误码，可以通过{@link FMErrorMsg#getErrorMsg(int)}获取加载地图失败详情
+     */
+    @Override
+    public void onMapInitFailure(String path, int errorCode) {
+        //TODO 可以提示用户地图加载失败原因，进行地图加载失败处理
+        Toast.makeText(this,"加载地图失败",Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -276,4 +321,62 @@ public class MainActivity extends AppCompatActivity implements OnFMCompassListen
         //恢复为初始状态
         mFMMap.resetCompassToNorth();
     }
+
+    /**
+     * 处理权限申请结果
+     * @param requestCode
+     * @param permissions
+     * @param grantResults
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        // 申请权限被拒绝，则退出程序。
+        if (grantResults[0] != PackageManager.PERMISSION_GRANTED ||
+                grantResults[1] != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this,"拒绝了必要权限，无法使用该程序！",Toast.LENGTH_SHORT).show();
+            this.finish();
+        } else if (requestCode == FMMapSDK.SDK_PERMISSION_RESULT_CODE) {
+            // SDK所需权限被允许
+        }
+    }
+
+
+    /**
+     * 当{@link FMMap#openMapById(String, boolean)}设置openMapById(String, false)时地图不自动更新会
+     * 回调此事件，可以调用{@link FMMap#upgrade(FMMapUpgradeInfo, OnFMDownloadProgressListener)}进行
+     * 地图下载更新
+     *
+     * @param upgradeInfo 地图版本更新详情,地图版本号{@link FMMapUpgradeInfo#getVersion()},<br/>
+     *                    地图id{@link FMMapUpgradeInfo#getMapId()}
+     * @return 如果调用了{@link FMMap#upgrade(FMMapUpgradeInfo, OnFMDownloadProgressListener)}地图下载更新，
+     * 返回值return true,因为{@link FMMap#upgrade(FMMapUpgradeInfo, OnFMDownloadProgressListener)}
+     * 会自动下载更新地图，更新完成后会加载地图;否则return false。
+     */
+    @Override
+    public boolean onUpgrade(FMMapUpgradeInfo upgradeInfo) {
+        boolean isUpgrade = upgradeInfo.isNeedUpgrade();
+        if (isUpgrade) { // 有新版本更新
+            // 调用更新接口，返回true，SDK内部会去加载新地图并显示
+            mFMMap.upgrade(upgradeInfo, new OnFMDownloadProgressListener() {
+                @Override
+                public void onCompleted(String mapPath) {
+                }
+
+                @Override
+                public void onProgress(long bytesWritten, long totalSize) {
+
+                }
+
+                @Override
+                public void onFailure(String mapPath, int errorCode) {
+
+                }
+            });
+
+            return true;
+        } else {  // 无更新，返回false则SDK内部会去加载本地地图并显示
+            return false;
+        }
+    }
+
 }
