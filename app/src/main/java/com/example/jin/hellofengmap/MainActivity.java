@@ -1,5 +1,6 @@
 package com.example.jin.hellofengmap;
 
+import android.content.Intent;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
@@ -15,7 +16,7 @@ import com.fengmap.android.map.FMMapView;
 public class MainActivity extends AppCompatActivity {
 
     FMMap mFMMap;
-    DrawerLayout drawerLayout;
+    FMMapView mapView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,14 +27,13 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar=(Toolbar)findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        drawerLayout=(DrawerLayout)findViewById(R.id.drawer_layout);
         ActionBar actionBar=getSupportActionBar();
         if (actionBar!=null){
             actionBar.setDisplayHomeAsUpEnabled(true);
             actionBar.setHomeAsUpIndicator(R.drawable.ic_menu);
         }
 
-        FMMapView mapView = (FMMapView) findViewById(R.id.mapview);
+        mapView = (FMMapView) findViewById(R.id.mapview);
         mFMMap = mapView.getFMMap();       //获取地图操作对象
 
         String bid = "10380";             //地图id
@@ -52,11 +52,29 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch(item.getItemId()){
             case android.R.id.home:
-                drawerLayout.openDrawer(GravityCompat.START);
+                Intent intent=new Intent(MainActivity.this,MySettingActivity.class);
+                startActivity(intent);
                 break;
             default:
                 break;
         }
         return true;
+    }
+
+    /**
+     * 地图手势控制
+     * @param bol
+     */
+    public void mapController(boolean bol){
+        //地图旋转
+        mapView.getFMMapGestureEnableController().setEnableMapRotate(bol);
+        //地图缩放
+        mapView.getFMMapGestureEnableController().setEnableMapScale(bol);
+        //地图平移
+        mapView.getFMMapGestureEnableController().setEnableMapDrag(bol);
+        //地图倾斜
+        mapView.getFMMapGestureEnableController().setEnableMapTilt(bol);
+        //地图惯性滑动
+        mapView.getFMMapGestureEnableController().setEnableMapSwipe(bol);
     }
 }
