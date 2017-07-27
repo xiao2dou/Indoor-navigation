@@ -2,8 +2,28 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <group android:checkableBehavior="single">
         <item
-            android:id="@+id/nav_setting"
-            android:icon="@drawable/ic_setting"
+            android:id="@+id/business"
+            android:icon="@drawable/ic_business_black_24dp"
+            android:title="商业合作"/>
+
+        <item
+            android:id="@+id/location"
+            android:icon="@drawable/ic_room_black_24dp"
+            android:title="定位"/>
+
+        <item
+            android:id="@+id/setting"
+            android:icon="@drawable/ic_settings_black_24dp"
             android:title="设置"/>
+
+        <item
+            android:id="@+id/heip"
+            android:icon="@drawable/ic_help_black_24dp"
+            android:title="帮助"/>
+
+        <item
+            android:id="@+id/feedback"
+            android:icon="@drawable/ic_reply_black_24dp"
+            android:title="反馈"/>
     </group>
 </menu>

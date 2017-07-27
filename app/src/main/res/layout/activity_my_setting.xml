@@ -1,29 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:orientation="vertical"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
-        <ImageView
-            android:id="@+id/icon_avatar"
-            android:layout_width="70dp"
-            android:layout_height="70dp"
-            android:src="@drawable/nav_icon"
-            android:layout_centerInParent="true"/>
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:padding="10dp"
+        android:background="@drawable/lighthouse">
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/icon_image"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/darkhouse"
+            android:layout_centerVertical="true"
+            android:paddingLeft="20dp"/>
 
         <TextView
             android:id="@+id/username"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:layout_gravity="bottom"
-            android:text="Test"
-            android:textColor="#000"
-            android:textSize="30sp"/>
-    </LinearLayout>
+            android:text="138****1234"
+            android:textColor="#000000"
+            android:textSize="14sp"
+            android:paddingLeft="20dp"/>
+
+        <TextView
+            android:id="@+id/mail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/username"
+            android:text="隔壁老王"
+            android:textColor="#000000"
+            android:textSize="14sp"
+            android:paddingLeft="20dp"/>
+
+
+    </RelativeLayout>
+
+    <ListView
+        android:id="@+id/list_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+
+    </ListView>
+
+
 
 </LinearLayout>
