@@ -11,6 +11,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import com.example.jin.hellofengmap.utils.ViewHelper;
 import com.fengmap.android.FMDevice;
 import com.fengmap.android.FMErrorMsg;
 import com.fengmap.android.FMMapSDK;
@@ -18,24 +19,39 @@ import com.fengmap.android.data.OnFMDownloadProgressListener;
 import com.fengmap.android.map.FMMap;
 import com.fengmap.android.map.FMMapUpgradeInfo;
 import com.fengmap.android.map.FMMapView;
+import com.fengmap.android.map.FMPickMapCoordResult;
 import com.fengmap.android.map.FMViewMode;
 import com.fengmap.android.map.animator.FMLinearInterpolator;
 import com.fengmap.android.map.event.OnFMCompassListener;
+import com.fengmap.android.map.event.OnFMMapClickListener;
 import com.fengmap.android.map.event.OnFMMapInitListener;
+import com.fengmap.android.map.event.OnFMNodeListener;
 import com.fengmap.android.map.event.OnFMSwitchGroupListener;
+import com.fengmap.android.map.geometry.FMMapCoord;
+import com.fengmap.android.map.layer.FMFacilityLayer;
+import com.fengmap.android.map.layer.FMModelLayer;
+import com.fengmap.android.map.marker.FMFacility;
+import com.fengmap.android.map.marker.FMModel;
+import com.fengmap.android.map.marker.FMNode;
 import com.fengmap.android.widget.FM3DControllerButton;
 import com.fengmap.android.widget.FMFloorControllerComponent;
 import com.fengmap.android.widget.FMZoomComponent;
 
-public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,OnFMCompassListener,OnFMSwitchGroupListener {
+public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,
+        OnFMCompassListener,OnFMSwitchGroupListener,OnFMMapClickListener {
 
     FMMap mFMMap;
     FMMapView mapView;
 
-    FM3DControllerButton m3DTextButton;
+    private FM3DControllerButton m3DTextButton;
     private FMFloorControllerComponent mFloorComponent;
     private boolean isAnimateEnd = true;
     private FMZoomComponent mZoomComponent;
+
+    private FMFacilityLayer mFacilityLayer;//公共设施图层
+    private FMModelLayer mModelLayer;//模型图层
+    private int mGroupId = 1;//默认楼层
+    private FMModel mClickedModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,8 +71,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 // 已经拥有权限了
             }
         }
+
         //初始化SDK
         FMMapSDK.init(getApplication());
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -85,6 +103,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //打开地图
         //第一个参数为地图ID，将会自动在缓存里面找地图文件，第二个参数为是否自动在线更新地图
         mFMMap.openMapById(bid, true);
+        //地图点击事件
+        mFMMap.setOnFMMapClickListener(this);
     }
 
 
@@ -112,6 +132,17 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         if (mZoomComponent == null) {
             initZoomComponent();
         }
+
+        int groupId = mFMMap.getFocusGroupId();
+        //公共设施图层
+        mFacilityLayer = mFMMap.getFMLayerProxy().getFMFacilityLayer(groupId);
+        mFacilityLayer.setOnFMNodeListener(mOnFacilityClickListener);
+        mFMMap.addLayer(mFacilityLayer);
+
+        //模型图层
+        mModelLayer = mFMMap.getFMLayerProxy().getFMModelLayer(groupId);
+        mModelLayer.setOnFMNodeListener(mOnModelCLickListener);
+        mFMMap.addLayer(mModelLayer);
     }
 
     /**
@@ -198,6 +229,17 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     void switchFloor(int groupId) {
         mFMMap.setFocusByGroupIdAnimated(groupId, new FMLinearInterpolator(), this);
+        //切换图层
+        mGroupId=groupId;
+        //公共设施图层
+        mFacilityLayer = mFMMap.getFMLayerProxy().getFMFacilityLayer(groupId);
+        mFacilityLayer.setOnFMNodeListener(mOnFacilityClickListener);
+        mFMMap.addLayer(mFacilityLayer);
+
+        //模型图层
+        mModelLayer = mFMMap.getFMLayerProxy().getFMModelLayer(groupId);
+        mModelLayer.setOnFMNodeListener(mOnModelCLickListener);
+        mFMMap.addLayer(mModelLayer);
     }
 
     /**
@@ -379,4 +421,71 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
     }
 
+    /**
+     * 模型点击事件
+     */
+    private OnFMNodeListener mOnModelCLickListener = new OnFMNodeListener() {
+        @Override
+        public boolean onClick(FMNode node) {
+            if(mClickedModel!=null){
+                mClickedModel.setSelected(false);
+            }
+            FMModel model = (FMModel) node;
+            mClickedModel = model;
+
+            model.setSelected(true);
+            mFMMap.updateMap();
+            FMMapCoord centerMapCoord = model.getCenterMapCoord();
+            String content = getString(R.string.event_click_content, "模型:"+mClickedModel.getName(), mGroupId, centerMapCoord.x, centerMapCoord.y);
+            Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+            //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
+            return true;
+        }
+
+        @Override
+        public boolean onLongPress(FMNode node) {
+            return false;
+        }
+    };
+    /**
+     * 公共设施点击事件
+     */
+    private OnFMNodeListener mOnFacilityClickListener = new OnFMNodeListener() {
+        @Override
+        public boolean onClick(FMNode node) {
+            FMFacility facility = (FMFacility) node;
+            FMMapCoord centerMapCoord = facility.getPosition();
+
+            String content = getString(R.string.event_click_content, "公共设施", mGroupId, centerMapCoord.x, centerMapCoord.y);
+            Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+            //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
+            return true;
+        }
+
+        @Override
+        public boolean onLongPress(FMNode node) {
+            return false;
+        }
+    };
+
+    /**
+     * 地图点击事件
+     * @param x
+     * @param y
+     */
+    @Override
+    public void onMapClick(float x, float y) {
+        FMPickMapCoordResult mapCoordResult = mFMMap.pickMapCoord(x, y);
+        double pX = x;
+        double pY = y;
+        if (mapCoordResult != null) {
+            FMMapCoord mapCoord = mapCoordResult.getMapCoord();
+            pX = mapCoord.x;
+            pY = mapCoord.y;
+        }
+
+        String content = getString(R.string.event_click_content, "地图", mGroupId, pX, pY);
+        Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+        //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
+    }
 }

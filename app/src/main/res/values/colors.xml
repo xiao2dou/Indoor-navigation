@@ -3,4 +3,11 @@
     <color name="colorPrimary">#4aea00</color>
     <color name="colorPrimaryDark">#88de9c</color>
     <color name="colorAccent">#ffffff</color>
+
+    <color name="white">#ffffffff</color>
+    <color name="blue">#26befd</color>
+    <color name="black">#ff333333</color>
+    <color name="gray">#5ff8f8f8</color>
+    <color name="driver_line">#ededed</color>
+    <color name="red">#ffff0000</color>
 </resources>
