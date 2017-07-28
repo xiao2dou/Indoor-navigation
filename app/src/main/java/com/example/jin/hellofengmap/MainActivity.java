@@ -3,6 +3,7 @@ package com.example.jin.hellofengmap;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -29,8 +30,10 @@ import com.fengmap.android.map.event.OnFMNodeListener;
 import com.fengmap.android.map.event.OnFMSwitchGroupListener;
 import com.fengmap.android.map.geometry.FMMapCoord;
 import com.fengmap.android.map.layer.FMFacilityLayer;
+import com.fengmap.android.map.layer.FMImageLayer;
 import com.fengmap.android.map.layer.FMModelLayer;
 import com.fengmap.android.map.marker.FMFacility;
+import com.fengmap.android.map.marker.FMImageMarker;
 import com.fengmap.android.map.marker.FMModel;
 import com.fengmap.android.map.marker.FMNode;
 import com.fengmap.android.widget.FM3DControllerButton;
@@ -38,10 +41,11 @@ import com.fengmap.android.widget.FMFloorControllerComponent;
 import com.fengmap.android.widget.FMZoomComponent;
 
 public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,
-        OnFMCompassListener,OnFMSwitchGroupListener,OnFMMapClickListener {
+        OnFMCompassListener,OnFMSwitchGroupListener,OnFMMapClickListener,View.OnClickListener{
 
     FMMap mFMMap;
     FMMapView mapView;
+    FloatingActionButton btnMyLocation;
 
     private FM3DControllerButton m3DTextButton;
     private FMFloorControllerComponent mFloorComponent;
@@ -52,6 +56,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     private FMModelLayer mModelLayer;//模型图层
     private int mGroupId = 1;//默认楼层
     private FMModel mClickedModel;
+
+    private FMImageLayer mImageLayer;//点标注
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +92,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             actionBar.setDisplayHomeAsUpEnabled(true);
             actionBar.setHomeAsUpIndicator(R.drawable.ic_menu);
         }
+
+        btnMyLocation=(FloatingActionButton)findViewById(R.id.btn_my_location);
 
         openMapByPath();
     }
@@ -143,6 +151,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mModelLayer = mFMMap.getFMLayerProxy().getFMModelLayer(groupId);
         mModelLayer.setOnFMNodeListener(mOnModelCLickListener);
         mFMMap.addLayer(mModelLayer);
+
+        //图片图层
+        mImageLayer = mFMMap.getFMLayerProxy().createFMImageLayer(mFMMap.getFocusGroupId());
+        mFMMap.addLayer(mImageLayer);
     }
 
     /**
@@ -154,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     @Override
     public void onMapInitFailure(String path, int errorCode) {
         //TODO 可以提示用户地图加载失败原因，进行地图加载失败处理
-        Toast.makeText(this,"加载地图失败",Toast.LENGTH_SHORT).show();
+        Toast.makeText(this,"加载地图失败，请检查网络设置",Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -240,6 +252,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mModelLayer = mFMMap.getFMLayerProxy().getFMModelLayer(groupId);
         mModelLayer.setOnFMNodeListener(mOnModelCLickListener);
         mFMMap.addLayer(mModelLayer);
+
+        //图片图层
+        mImageLayer = mFMMap.getFMLayerProxy().createFMImageLayer(mFMMap.getFocusGroupId());
+        mFMMap.addLayer(mImageLayer);
     }
 
     /**
@@ -436,6 +452,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             model.setSelected(true);
             mFMMap.updateMap();
             FMMapCoord centerMapCoord = model.getCenterMapCoord();
+
+            showMarket(centerMapCoord);
+
             String content = getString(R.string.event_click_content, "模型:"+mClickedModel.getName(), mGroupId, centerMapCoord.x, centerMapCoord.y);
             Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
             //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
@@ -455,6 +474,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         public boolean onClick(FMNode node) {
             FMFacility facility = (FMFacility) node;
             FMMapCoord centerMapCoord = facility.getPosition();
+
+            showMarket(centerMapCoord);
 
             String content = getString(R.string.event_click_content, "公共设施", mGroupId, centerMapCoord.x, centerMapCoord.y);
             Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
@@ -476,6 +497,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     @Override
     public void onMapClick(float x, float y) {
         FMPickMapCoordResult mapCoordResult = mFMMap.pickMapCoord(x, y);
+
         double pX = x;
         double pY = y;
         if (mapCoordResult != null) {
@@ -487,5 +509,37 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         String content = getString(R.string.event_click_content, "地图", mGroupId, pX, pY);
         Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
         //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
+    }
+
+    /**
+     * 显示标记
+     * @param centerMapCoord 标记位置
+     * @author jin
+     */
+    public void showMarket(FMMapCoord centerMapCoord){
+        if (centerMapCoord!=null&&mImageLayer==null){
+            //添加图片标注
+            FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(),
+                    centerMapCoord, R.drawable.ic_marker_blue);
+            mImageLayer.addMarker(imageMarker);
+        }else if (centerMapCoord!=null&&mImageLayer!=null){
+            //移除现有标记
+            mImageLayer.removeAll();
+            //添加图片标注
+            FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(),
+                    centerMapCoord, R.drawable.ic_marker_blue);
+            mImageLayer.addMarker(imageMarker);
+        }
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.btn_my_location:
+
+                break;
+            default:
+                break;
+        }
     }
 }
