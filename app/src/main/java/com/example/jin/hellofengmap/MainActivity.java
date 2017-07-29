@@ -2,15 +2,23 @@ package com.example.jin.hellofengmap;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.jin.hellofengmap.utils.SnackbarUtil;
 import com.example.jin.hellofengmap.utils.ViewHelper;
 import com.fengmap.android.FMDevice;
 import com.fengmap.android.FMErrorMsg;
@@ -36,6 +44,8 @@ import com.fengmap.android.map.marker.FMNode;
 import com.fengmap.android.widget.FM3DControllerButton;
 import com.fengmap.android.widget.FMFloorControllerComponent;
 import com.fengmap.android.widget.FMZoomComponent;
+
+import static com.example.jin.hellofengmap.R.attr.colorPrimary;
 
 public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,
         OnFMCompassListener,OnFMSwitchGroupListener,OnFMMapClickListener {
@@ -425,6 +435,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 模型点击事件
      */
     private OnFMNodeListener mOnModelCLickListener = new OnFMNodeListener() {
+
         @Override
         public boolean onClick(FMNode node) {
             if(mClickedModel!=null){
@@ -432,13 +443,28 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             }
             FMModel model = (FMModel) node;
             mClickedModel = model;
-
+            LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
             model.setSelected(true);
             mFMMap.updateMap();
             FMMapCoord centerMapCoord = model.getCenterMapCoord();
             String content = getString(R.string.event_click_content, "模型:"+mClickedModel.getName(), mGroupId, centerMapCoord.x, centerMapCoord.y);
-            Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
-            //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
+
+            //建立SnackBar提示用户点击的地图信息
+            Snackbar snackbar=Snackbar.make(linearLayout,mClickedModel.getName(),Snackbar.LENGTH_INDEFINITE);
+            SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.green);
+            SnackbarUtil.SnackbarAddView(snackbar,R.layout.snackbar,0);
+            View view=snackbar.getView();
+            Button go_there=(Button)view.findViewById(R.id.go);
+            go_there.setBackgroundColor(Color.RED);
+
+            //"去这里"按钮的点击事件
+            go_there.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View view) {
+                    Toast.makeText(MainActivity.this,"gogogo",Toast.LENGTH_SHORT).show();
+                }
+            });
+            snackbar.show();
             return true;
         }
 
@@ -457,7 +483,23 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             FMMapCoord centerMapCoord = facility.getPosition();
 
             String content = getString(R.string.event_click_content, "公共设施", mGroupId, centerMapCoord.x, centerMapCoord.y);
-            Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+
+            LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
+            //建立SnackBar提示用户点击模型的信息
+            Snackbar snackbar=Snackbar.make(linearLayout,"公共设施",Snackbar.LENGTH_INDEFINITE);
+            SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.green);
+            SnackbarUtil.SnackbarAddView(snackbar,R.layout.snackbar,0);
+            View view=snackbar.getView();
+            Button go_there=(Button)view.findViewById(R.id.go);
+
+            //"去这里"按钮的点击事件
+            go_there.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View view) {
+                    Toast.makeText(MainActivity.this,"gogogo",Toast.LENGTH_SHORT).show();
+                }
+            });
+            snackbar.show();
             //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
             return true;
         }
