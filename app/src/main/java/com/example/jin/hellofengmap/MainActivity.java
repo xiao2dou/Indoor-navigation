@@ -7,11 +7,13 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
@@ -21,11 +23,14 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.example.jin.hellofengmap.location.Location;
 import com.example.jin.hellofengmap.location.iBeacon;
 import com.example.jin.hellofengmap.location.iBeaconClass;
+import com.example.jin.hellofengmap.utils.SnackbarUtil;
 import com.example.jin.hellofengmap.utils.ViewHelper;
 import com.fengmap.android.FMDevice;
 import com.fengmap.android.FMErrorMsg;
@@ -513,8 +518,25 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
             showMarket(centerMapCoord);
 
-            String content = getString(R.string.event_click_content, "模型:"+mClickedModel.getName(), mGroupId, centerMapCoord.x, centerMapCoord.y);
-            Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+            //String content = getString(R.string.event_click_content, "模型:"+mClickedModel.getName(), mGroupId, centerMapCoord.x, centerMapCoord.y);
+            //建立SnackBar提示用户点击的地图信息
+            LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
+            Snackbar snackbar=Snackbar.make(linearLayout,mClickedModel.getName(),Snackbar.LENGTH_INDEFINITE);
+            SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.green);
+            SnackbarUtil.SnackbarAddView(snackbar,R.layout.snackbar,0);
+            View view=snackbar.getView();
+            Button go_there=(Button)view.findViewById(R.id.go);
+            go_there.setBackgroundColor(Color.RED);
+
+            //"去这里"按钮的点击事件
+            go_there.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View view) {
+                    Toast.makeText(MainActivity.this,"gogogo",Toast.LENGTH_SHORT).show();
+                }
+            });
+            snackbar.show();
+            //Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
             //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
             return true;
         }
@@ -535,8 +557,25 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
             showMarket(centerMapCoord);
 
-            String content = getString(R.string.event_click_content, "公共设施", mGroupId, centerMapCoord.x, centerMapCoord.y);
-            Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+            //String content = getString(R.string.event_click_content, "公共设施", mGroupId, centerMapCoord.x, centerMapCoord.y);
+            //Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+
+            LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
+            //建立SnackBar提示用户点击模型的信息
+            Snackbar snackbar=Snackbar.make(linearLayout,"公共设施",Snackbar.LENGTH_INDEFINITE);
+            SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.green);
+            SnackbarUtil.SnackbarAddView(snackbar,R.layout.snackbar,0);
+            View view=snackbar.getView();
+            Button go_there=(Button)view.findViewById(R.id.go);
+
+            //"去这里"按钮的点击事件
+            go_there.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View view) {
+                    Toast.makeText(MainActivity.this,"gogogo",Toast.LENGTH_SHORT).show();
+                }
+            });
+            snackbar.show();
             //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
             return true;
         }
