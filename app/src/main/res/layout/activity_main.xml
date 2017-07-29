@@ -5,21 +5,32 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:id="@+id/activity_main_layout">
+    android:layout_height="match_parent">
 
         <android.support.v7.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?actionBarSize"
+            android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
 
-        <com.fengmap.android.map.FMMapView
-            android:layout_width="wrap_content"
-            android:layout_height="560dp"
-            android:id="@+id/mapview"/>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+                <com.fengmap.android.map.FMMapView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/mapview"/>
+
+                <android.support.design.widget.FloatingActionButton
+                    android:id="@+id/btn_my_location"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|left"
+                    android:layout_margin="16dp"
+                    android:src="@drawable/ic_my_location"/>
+        </FrameLayout>
 
         <TextView
             android:id="@+id/map_result"

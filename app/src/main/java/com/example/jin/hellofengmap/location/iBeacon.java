@@ -82,6 +82,6 @@ public class iBeacon {
      */
     @Override
     public String toString() {
-        return "[" + this.name +"$"+this.major+"$"+this.minor+"$"+this.proximityUuid+"$"+this.bluetoothAddress+"$"+this.txPower+"$"+this.rssi+"$"+"]";
+        return "[" + this.name +"$"+this.major+"$"+this.minor+"$"+this.proximityUuid+"$"+this.bluetoothAddress+"$"+this.txPower+"$"+this.rssi+"$"+"]"+"*";
     }
 }

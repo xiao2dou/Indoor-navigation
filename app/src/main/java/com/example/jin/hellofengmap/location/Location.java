@@ -29,6 +29,8 @@ public class Location {
 
     protected FMMapCoord myLocation;
 
+    public static boolean isProblem=false;
+
     /**
      * 处理、保存、上传扫描信息
      *
@@ -51,6 +53,7 @@ public class Location {
 
         if (mIBeaconList.size()==0){
             Toast.makeText(contextMain,"您当前环境暂不支持室内定位",Toast.LENGTH_SHORT).show();
+            isProblem=true;
             return;
         }
 
@@ -126,13 +129,15 @@ public class Location {
                     Log.d("SendDatabase", "run: fuuuuuuuuuck   " + response);
                     if (response.isSuccessful()){
                         //广播上传成功消息
-                        //Toast.makeText(RecordActivity.this,"Success!",Toast.LENGTH_SHORT).show();//广播上传成功
+                        //Toast.makeText(contextMain,"Success!",Toast.LENGTH_SHORT).show();//广播上传成功
                     }else{
                         Toast.makeText(contextMain,"上传失败，数据格式错误",Toast.LENGTH_LONG).show();
+                        isProblem=true;
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                     Toast.makeText(contextMain,"无法连接到服务器，请检查网络设置",Toast.LENGTH_LONG).show();
+                    isProblem=true;
                     Log.d("SendDatabase Fail ", e.getMessage());
                 }
             }
@@ -148,7 +153,7 @@ public class Location {
 
 
     private static String iBeaconListToString(List<iBeacon> iBeaconList){
-        String answer="xxxtestxxx";
+        String answer="";
         for (iBeacon ibeacon:iBeaconList){
             answer+=ibeacon.toString();
         }
