@@ -159,6 +159,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         btnMyLocation.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Location.isProblem=false;//默认无问题
                 if (isScanning==false){
                     beginScan();
                 }
@@ -607,13 +608,13 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         return true;
     }
 
-    private void beginScan(){
+    public void beginScan(){
         scanLeDevice(true);
         timer = new Timer(true);
-        timer.schedule(task,0, 1000); //延时0ms后执行，1000ms执行一次
+        timer.schedule(task,1000, 1000); //延时0ms后执行，1000ms执行一次
     }
 
-    private void stopScan(){
+    public void stopScan(){
         scanLeDevice(false);
         timer.cancel();
     }
@@ -679,9 +680,11 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     //定时执行
     TimerTask task = new TimerTask(){
         public void run() {
-            Message message = new Message();
-            message.what = 1;
-            handler.sendMessage(message);
+            if (Location.isProblem==false){
+                Message message = new Message();
+                message.what = 1;
+                handler.sendMessage(message);
+            }
         }
     };
 
@@ -698,6 +701,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     break;
                 case 1://1s到，处理、发送数据
                     Location.ProcessData(MainActivity.this, mIBeaconList);
+                    mIBeaconList.clear();
                     break;
                 default:
                     break;
