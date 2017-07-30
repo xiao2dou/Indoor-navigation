@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.RequiresApi;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -520,14 +521,14 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
             //String content = getString(R.string.event_click_content, "模型:"+mClickedModel.getName(), mGroupId, centerMapCoord.x, centerMapCoord.y);
             //建立SnackBar提示用户点击的地图信息
-            LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
+            CoordinatorLayout mCoordinatorLayout=(CoordinatorLayout)findViewById(R.id.coordinatorLayout);
             String name=mClickedModel.getName();
             Log.d("Test", "onClick: "+name+"len"+name.length());
             if (name.length()==0){
                 name="未命名区域";
             }
             Log.d("Test", "onClick: "+name+"len"+name.length());
-            snackbar=Snackbar.make(linearLayout,name,Snackbar.LENGTH_INDEFINITE);
+            snackbar=Snackbar.make(mCoordinatorLayout,name,Snackbar.LENGTH_INDEFINITE);
             SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.blue);
             SnackbarUtil.SnackbarAddView(snackbar,R.layout.snackbar,0);
             View view=snackbar.getView();
@@ -566,9 +567,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             //String content = getString(R.string.event_click_content, "公共设施", mGroupId, centerMapCoord.x, centerMapCoord.y);
             //Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
 
-            LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
+            //LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
+            CoordinatorLayout mCoordinatorLayout=(CoordinatorLayout)findViewById(R.id.coordinatorLayout);
             //建立SnackBar提示用户点击模型的信息
-            snackbar=Snackbar.make(linearLayout,"公共设施",Snackbar.LENGTH_INDEFINITE);
+            snackbar=Snackbar.make(mCoordinatorLayout,"公共设施",Snackbar.LENGTH_INDEFINITE);
             SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.blue);
             SnackbarUtil.SnackbarAddView(snackbar,R.layout.snackbar,0);
             View view=snackbar.getView();
@@ -609,7 +611,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             pX = mapCoord.x;
             pY = mapCoord.y;
         }
-        snackbar.dismiss();
+        if (snackbar!=null){
+            snackbar.dismiss();
+        }
 //        String content = getString(R.string.event_click_content, "地图", mGroupId, pX, pY);
 //        Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
         //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
@@ -657,7 +661,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     public void beginScan(){
         scanLeDevice(true);
         timer = new Timer(true);
-        timer.schedule(task,1000, 1000); //延时0ms后执行，1000ms执行一次
+        timer.schedule(task,4000, 3000); //延时0ms后执行，1000ms执行一次
     }
 
     public void stopScan(){
@@ -726,11 +730,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     //定时执行
     TimerTask task = new TimerTask(){
         public void run() {
-            if (Location.isProblem==false){
-                Message message = new Message();
-                message.what = 1;
-                handler.sendMessage(message);
-            }
+            Message message = new Message();
+            message.what = 1;
+            handler.sendMessage(message);
         }
     };
 
@@ -746,7 +748,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 case 0:
                     break;
                 case 1://1s到，处理、发送数据
-                    Location.ProcessData(MainActivity.this, mIBeaconList);
+                    if (Location.isProblem==false) {
+                        Location.ProcessData(MainActivity.this, mIBeaconList);
+                    }
                     mIBeaconList.clear();
                     break;
                 default:

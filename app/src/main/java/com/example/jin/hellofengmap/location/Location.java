@@ -29,7 +29,7 @@ public class Location {
 
     protected FMMapCoord myLocation;
 
-    public static boolean isProblem=false;
+    public static boolean isProblem = false;
 
     /**
      * 处理、保存、上传扫描信息
@@ -37,40 +37,40 @@ public class Location {
      * @author jin
      * Data:2017/7/17
      */
-    public static void ProcessData(Context contextMain,List<iBeacon> mIBeaconList){
+    public static void ProcessData(Context contextMain, List<iBeacon> mIBeaconList) {
 
-        int count=0;//记录扫描到iBeacon的数量
+        int count = 0;//记录扫描到iBeacon的数量
 
         //扫描到几个iBeacon（MAC地址不同），就置入几个
         // iBeacons类继承于iBeacon类，保存了一个iBeacon在一段时间内所有的RSSI信息
-        List<iBeacons> iBeaconsList=new ArrayList<>();
+        List<iBeacons> iBeaconsList = new ArrayList<>();
 
         //所有扫描到的iBeacon信号的MAC地址都置入该List，扫描到几次就存入几次
-        List<String> iBeaconMacList=new ArrayList<>();
+        List<String> iBeaconMacList = new ArrayList<>();
 
         //处理后的iBeacon信息，一个iBeacon对应一条数据
-        List<iBeacon> answerIBeaconList=new ArrayList<>();
+        List<iBeacon> answerIBeaconList = new ArrayList<>();
 
-        if (mIBeaconList.size()==0){
-            Toast.makeText(contextMain,"您当前环境暂不支持室内定位",Toast.LENGTH_SHORT).show();
-            isProblem=true;
+        if (mIBeaconList.size() == 0) {
+            Toast.makeText(contextMain, "您当前环境暂不支持室内定位", Toast.LENGTH_SHORT).show();
+            isProblem = true;
             return;
         }
 
         //遍历所有接收到的信号信息
-        for(iBeacon item:mIBeaconList){
+        for (iBeacon item : mIBeaconList) {
             //Log.d(TAG, "run: item mac:"+item.getBluetoothAddress());
             //统计iBeacon个数
-            if (iBeaconMacList.indexOf(item.getBluetoothAddress())==-1){
+            if (iBeaconMacList.indexOf(item.getBluetoothAddress()) == -1) {
                 //首次在该位置接收到某iBeacon信号
                 count++;
                 iBeaconMacList.add(item.getBluetoothAddress());
                 iBeaconsList.add(new iBeacons(item));
-            }else{//非首次在该位置接收到某iBeacon信号
+            } else {//非首次在该位置接收到某iBeacon信号
                 //遍历iBeacons类的List
-                for(int i=0;i<iBeaconsList.size();i++){
+                for (int i = 0; i < iBeaconsList.size(); i++) {
                     //找到已存在的对象
-                    if (item.getBluetoothAddress().equals(iBeaconsList.get(i).getBluetoothAddress())){
+                    if (item.getBluetoothAddress().equals(iBeaconsList.get(i).getBluetoothAddress())) {
                         //向已存在的对象中添加RSSI数据
                         iBeaconsList.get(i).rssiList.add(String.valueOf(item.getRssi()));
                     }
@@ -81,15 +81,15 @@ public class Location {
         //Log.d(TAG, "run: iBeaconsList size="+iBeaconsList.size());
 
         //处理iBeacons类，将处理结果置入answerIBeaconList
-        for (iBeacons ibeacons:iBeaconsList){
-            answerIBeaconList.add(new iBeacon(ibeacons,Integer.valueOf(FitRssi.FitRssiData(ibeacons.getRssiList()))));
+        for (iBeacons ibeacons : iBeaconsList) {
+            answerIBeaconList.add(new iBeacon(ibeacons, Integer.valueOf(FitRssi.FitRssiData(ibeacons.getRssiList()))));
         }
 
         try {
             //这里Place先不存数据库，直接上传
             //存数据库发生了IBeaconList丢失的情况，
             // 在数据库取出的Place中再次获取IBeaconList的时候返回了null
-            SendDatebase(contextMain,answerIBeaconList);
+            SendDatebase(contextMain, answerIBeaconList);
         } catch (Exception e) {
             //Toast.makeText(RecordActivity.this,e.getMessage(),Toast.LENGTH_SHORT).show();
             e.printStackTrace();
@@ -97,19 +97,22 @@ public class Location {
     }
 
 
-
     /**
      * 将数据上传至服务器后台
+     *
      * @param place
      * @author fang
      * Data:2017/7/16
      */
-    protected static final String IP="192.168.1.107";
-    protected static final String URL = "http://"+ IP +":80/post/addPlace";
+//    protected static final String IP = "192.168.1.106";
+//    protected static final String URL = "http://" + IP + ":80/locate";
+
+    protected static final String IP = "192.168.1.106";
+    protected static final String URL = "http://" + IP + ":80/locate";
 
     public static void SendDatebase(final Context contextMain, final List<iBeacon> iBeaconList) {
 
-        final String TAG="SendDate";
+        final String TAG = "SendDate";
 
         final Runnable runnable = new Runnable() {
             @Override
@@ -130,6 +133,8 @@ public class Location {
                     if (response.isSuccessful()){
                         //广播上传成功消息
                         //Toast.makeText(contextMain,"Success!",Toast.LENGTH_SHORT).show();//广播上传成功
+                        Log.d(TAG, "run: SendDate Success!!!!!!!");
+                        Log.d(TAG, "run: Response Message:"+response.header("place"));
                     }else{
                         Toast.makeText(contextMain,"上传失败，数据格式错误",Toast.LENGTH_LONG).show();
                         isProblem=true;
@@ -138,7 +143,7 @@ public class Location {
                     e.printStackTrace();
                     Toast.makeText(contextMain,"无法连接到服务器，请检查网络设置",Toast.LENGTH_LONG).show();
                     isProblem=true;
-                    Log.d("SendDatabase Fail ", e.getMessage());
+                    //Log.d("SendDatabase Fail ", e.getMessage());
                 }
             }
         };
@@ -149,13 +154,13 @@ public class Location {
                 Looper.loop();//这种情况下，Runnable对象是运行在子线程中的，可以进行联网操作，但是不能更新UI
             }
         }.start();
+
     }
 
-
-    private static String iBeaconListToString(List<iBeacon> iBeaconList){
-        String answer="";
-        for (iBeacon ibeacon:iBeaconList){
-            answer+=ibeacon.toString();
+    private static String iBeaconListToString(List<iBeacon> iBeaconList) {
+        String answer = "";
+        for (iBeacon ibeacon : iBeaconList) {
+            answer += ibeacon.toString();
         }
         return answer;
     }

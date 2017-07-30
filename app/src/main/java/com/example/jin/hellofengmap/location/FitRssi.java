@@ -22,27 +22,34 @@ public class FitRssi {
 
         List<Integer> fitRssiList=new ArrayList<>();
 
-        double confidence=0.5;
+        double confidence=0.9;
         double average=0;
         double variance=0;
-        for (String string:rssiList) {
-            average+=Integer.valueOf(string);
-        }
-        average/=rssiList.size();
-        //System.out.println("average"+average);
-        for (String string:rssiList) {
-            variance+=Math.pow(Integer.valueOf(string)-average, 2);
-        }
-        variance/=rssiList.size();
-        //System.out.println("variance:"+variance);
-        double normal=0;
-        for (String string:rssiList) {
-            normal=(Integer.valueOf(string)-average)/variance;
-            if (normal>-confidence&&normal<confidence) {
+        if (rssiList.size()>2){
+            for (String string:rssiList) {
+                average+=Integer.valueOf(string);
+            }
+            average/=rssiList.size();
+            //System.out.println("average"+average);
+            for (String string:rssiList) {
+                variance+=Math.pow(Integer.valueOf(string)-average, 2);
+            }
+            variance/=rssiList.size();
+            //System.out.println("variance:"+variance);
+            double normal=0;
+            for (String string:rssiList) {
+                normal=(Integer.valueOf(string)-average)/variance;
+                if (normal>-confidence&&normal<confidence) {
+                    fitRssiList.add(Integer.valueOf(string));
+                }
+                normal=0;
+            }
+        }else {
+            for (String string:rssiList){
                 fitRssiList.add(Integer.valueOf(string));
             }
-            normal=0;
         }
+
 
         int averageRssi=0;
         for (Integer i:fitRssiList){
