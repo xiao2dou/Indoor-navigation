@@ -20,7 +20,7 @@ public class SnackbarUtil {
 
     public static  int red = 0xfff44336;
     public static  int green = 0xff4caf50;
-    public static  int blue = 0xff2195f3;
+    public static  int blue = 0xff0097ef;
     public static  int orange = 0xffffc107;
 
     /**

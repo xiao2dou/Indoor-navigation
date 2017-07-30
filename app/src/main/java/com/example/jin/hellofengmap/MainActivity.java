@@ -83,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     private FMModel mClickedModel;
 
     private FMImageLayer mImageLayer;//点标注
+    Snackbar snackbar;
 
     public static BluetoothAdapter mBluetoothAdapter;//蓝牙
     public boolean isScanning=false;
@@ -109,7 +110,6 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     Toast.makeText(this, "定位需要开启蓝牙", Toast.LENGTH_SHORT).show();
                 }
             }
-
 
             // 先检测权限   目前SDK只需2个危险权限，读和写存储卡
             int p1 = MainActivity.this.checkSelfPermission(FMMapSDK.SDK_PERMISSIONS[0]);
@@ -521,12 +521,18 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             //String content = getString(R.string.event_click_content, "模型:"+mClickedModel.getName(), mGroupId, centerMapCoord.x, centerMapCoord.y);
             //建立SnackBar提示用户点击的地图信息
             LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
-            Snackbar snackbar=Snackbar.make(linearLayout,mClickedModel.getName(),Snackbar.LENGTH_INDEFINITE);
-            SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.green);
+            String name=mClickedModel.getName();
+            Log.d("Test", "onClick: "+name+"len"+name.length());
+            if (name.length()==0){
+                name="未命名区域";
+            }
+            Log.d("Test", "onClick: "+name+"len"+name.length());
+            snackbar=Snackbar.make(linearLayout,name,Snackbar.LENGTH_INDEFINITE);
+            SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.blue);
             SnackbarUtil.SnackbarAddView(snackbar,R.layout.snackbar,0);
             View view=snackbar.getView();
             Button go_there=(Button)view.findViewById(R.id.go);
-            go_there.setBackgroundColor(Color.RED);
+            //go_there.setBackgroundColor(Color.WHITE);
 
             //"去这里"按钮的点击事件
             go_there.setOnClickListener(new View.OnClickListener(){
@@ -562,8 +568,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
             LinearLayout linearLayout=(LinearLayout)findViewById(R.id.activity_main_layout);
             //建立SnackBar提示用户点击模型的信息
-            Snackbar snackbar=Snackbar.make(linearLayout,"公共设施",Snackbar.LENGTH_INDEFINITE);
-            SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.green);
+            snackbar=Snackbar.make(linearLayout,"公共设施",Snackbar.LENGTH_INDEFINITE);
+            SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.blue);
             SnackbarUtil.SnackbarAddView(snackbar,R.layout.snackbar,0);
             View view=snackbar.getView();
             Button go_there=(Button)view.findViewById(R.id.go);
@@ -603,7 +609,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             pX = mapCoord.x;
             pY = mapCoord.y;
         }
-
+        snackbar.dismiss();
 //        String content = getString(R.string.event_click_content, "地图", mGroupId, pX, pY);
 //        Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
         //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
