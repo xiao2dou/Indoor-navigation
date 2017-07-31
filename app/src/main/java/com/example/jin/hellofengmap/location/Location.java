@@ -27,7 +27,9 @@ import okhttp3.Response;
 
 public class Location {
 
-    protected FMMapCoord myLocation;
+    public static FMMapCoord myLocation=new FMMapCoord(0,0,0);
+
+    public static int groupId=0;
 
     public static boolean isProblem = false;
 
@@ -104,22 +106,23 @@ public class Location {
      * @author fang
      * Data:2017/7/16
      */
-//    protected static final String IP = "192.168.1.106";
+//    protected static final String IP = "192.168.1.109";
 //    protected static final String URL = "http://" + IP + ":80/locate";
 
-    protected static final String IP = "192.168.1.106";
+    protected static final String IP = "192.168.1.109";
     protected static final String URL = "http://" + IP + ":80/locate";
 
     public static void SendDatebase(final Context contextMain, final List<iBeacon> iBeaconList) {
 
         final String TAG = "SendDate";
+        Log.d(TAG, "SendDatebase:" + iBeaconListToString(iBeaconList));
 
         final Runnable runnable = new Runnable() {
             @Override
             public void run() {
                 //执行耗时操作
                 try {
-                    Log.d(TAG, "run: "+URL);
+                    Log.d(TAG, "run: " + URL);
                     OkHttpClient client = new OkHttpClient();
                     RequestBody requestBody = new FormBody.Builder()
                             .add("recordData", iBeaconListToString(iBeaconList))
@@ -130,19 +133,23 @@ public class Location {
                             .build();
                     Response response = client.newCall(request).execute();
                     Log.d("SendDatabase", "run: fuuuuuuuuuck   " + response);
-                    if (response.isSuccessful()){
+                    if (response.isSuccessful()) {
                         //广播上传成功消息
                         //Toast.makeText(contextMain,"Success!",Toast.LENGTH_SHORT).show();//广播上传成功
-                        Log.d(TAG, "run: SendDate Success!!!!!!!");
-                        Log.d(TAG, "run: Response Message:"+response.header("place"));
-                    }else{
-                        Toast.makeText(contextMain,"上传失败，数据格式错误",Toast.LENGTH_LONG).show();
-                        isProblem=true;
+                        Log.d(TAG, "run: SendDate Success!!!!!!!"+response);
+                        Log.d(TAG, "run: Response Message:" + response.header("location"));
+                        //解析数据失败
+                        if (dealWithResponse(response.header("location")) == false) {
+                            Toast.makeText(contextMain, "您当前环境暂不支持定位", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(contextMain, "上传失败，数据格式错误", Toast.LENGTH_LONG).show();
+                        isProblem = true;
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Toast.makeText(contextMain,"无法连接到服务器，请检查网络设置",Toast.LENGTH_LONG).show();
-                    isProblem=true;
+                    Toast.makeText(contextMain, "无法连接到服务器，请检查网络设置", Toast.LENGTH_LONG).show();
+                    isProblem = true;
                     //Log.d("SendDatabase Fail ", e.getMessage());
                 }
             }
@@ -155,6 +162,53 @@ public class Location {
             }
         }.start();
 
+    }
+
+    /**
+     * 解析后台返回的定位位置信息
+     *
+     * @param message
+     * @return
+     */
+    private static boolean dealWithResponse(String message) {
+
+        String TAG="Location";
+        String floor="0";
+        String x="0";
+        String y="0";
+        try {
+            if (message!=null){
+                int maohao = message.indexOf(':');
+                int xiegang = message.indexOf('/');
+
+                floor = message.substring(maohao + 1, xiegang);
+
+                maohao = message.indexOf(':', maohao);
+                xiegang = message.indexOf('/', xiegang);
+
+                x = message.substring(maohao + 1, xiegang);
+
+                maohao = message.indexOf(':', maohao);
+                xiegang = message.indexOf('/', xiegang);
+
+                y = message.substring(maohao + 1, xiegang);
+            }else{
+                return false;
+            }
+
+            groupId = Integer.valueOf(floor);
+            myLocation.x = Double.valueOf(x);
+            myLocation.y = Double.valueOf(y);
+
+            Log.d(TAG, "dealWithResponse: groupId:"+groupId);
+            Log.d(TAG, "dealWithResponse: x:"+x);
+            Log.d(TAG, "dealWithResponse: y:"+y);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return true;
     }
 
     private static String iBeaconListToString(List<iBeacon> iBeaconList) {
@@ -171,6 +225,14 @@ public class Location {
 
     public void setMyLocation(FMMapCoord myLocation) {
         this.myLocation = myLocation;
+    }
+
+    public int getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(int groupId) {
+        this.groupId = groupId;
     }
 
 }
