@@ -15,26 +15,23 @@
             android:id="@+id/icon_image"
             android:layout_width="80dp"
             android:layout_height="80dp"
-            android:src="@drawable/darkhouse"
             android:layout_centerVertical="true"
             android:paddingLeft="20dp"/>
 
         <TextView
-            android:id="@+id/username"
+            android:id="@+id/user_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:text="138****1234"
             android:textColor="#000000"
             android:textSize="14sp"
             android:paddingLeft="20dp"/>
 
         <TextView
-            android:id="@+id/mail"
+            android:id="@+id/user_phone"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_above="@+id/username"
-            android:text="隔壁老王"
+            android:layout_above="@+id/user_name"
             android:textColor="#000000"
             android:textSize="14sp"
             android:paddingLeft="20dp"/>

@@ -7,9 +7,11 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
@@ -29,6 +31,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+import android.graphics.Bitmap;
 
 import com.example.jin.hellofengmap.location.Location;
 import com.example.jin.hellofengmap.location.iBeacon;
@@ -71,6 +74,13 @@ import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,
         OnFMCompassListener, OnFMSwitchGroupListener, OnFMMapClickListener {
+
+
+    //个人信息里面的图片，昵称，电话，性别
+    public static Bitmap mainBitmap;
+    public static String mainName=new String("昵称");
+    public static String mainPhone=new String("电话");
+    public static String mainGender=new String("性别");
 
     FMMap mFMMap;
     FMMapView mapView;
