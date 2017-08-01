@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -13,6 +15,7 @@ import android.view.Display;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.jin.hellofengmap.Adapter.SettingAdapter;
@@ -37,6 +40,18 @@ public class MySettingActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my_setting);
+
+        //设置昵称和电话
+        TextView userName=(TextView)findViewById(R.id.user_name);
+        TextView userPhone=(TextView)findViewById(R.id.user_phone);
+        userName.setText(MainActivity.mainName);
+        userPhone.setText(MainActivity.mainPhone);
+
+
+        //活动启动的时候设置头像
+        CircleImageView initHead=(CircleImageView)findViewById(R.id.icon_image);
+        initHead.setImageBitmap(MainActivity.mainBitmap);
+
         //获取全局context
         context=getApplicationContext();
         initSettings();
@@ -138,5 +153,21 @@ public class MySettingActivity extends AppCompatActivity {
         CircleImageView head=(CircleImageView)findViewById(R.id.icon_image);
         Bitmap bitmap= BitmapFactory.decodeFile(imagePath);
         head.setImageBitmap(bitmap);
+        //将图片传给MainActivity
+        MainActivity.mainBitmap=bitmap;
+        TextView userName=(TextView)findViewById(R.id.user_name);
+        TextView userPhone=(TextView)findViewById(R.id.user_phone);
+        userName.setText(MainActivity.mainName);
+        userPhone.setText(MainActivity.mainPhone);
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        //设置昵称和电话
+        TextView userName=(TextView)findViewById(R.id.user_name);
+        TextView userPhone=(TextView)findViewById(R.id.user_phone);
+        userName.setText(MainActivity.mainName);
+        userPhone.setText(MainActivity.mainPhone);
     }
 }
