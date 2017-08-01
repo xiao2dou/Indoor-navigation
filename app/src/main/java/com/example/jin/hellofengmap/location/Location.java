@@ -21,6 +21,8 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import static android.R.attr.handle;
+
 /**
  * Created by jin on 2017/7/28.
  */
@@ -183,15 +185,14 @@ public class Location {
 
                 floor = message.substring(maohao + 1, xiegang);
 
-                maohao = message.indexOf(':', maohao);
-                xiegang = message.indexOf('/', xiegang);
+                maohao = message.indexOf(':', maohao+1);
+                xiegang = message.indexOf('/', xiegang+1);
 
                 x = message.substring(maohao + 1, xiegang);
 
-                maohao = message.indexOf(':', maohao);
-                xiegang = message.indexOf('/', xiegang);
+                maohao = message.indexOf(':', maohao+1);
 
-                y = message.substring(maohao + 1, xiegang);
+                y = message.substring(maohao + 1);
             }else{
                 return false;
             }

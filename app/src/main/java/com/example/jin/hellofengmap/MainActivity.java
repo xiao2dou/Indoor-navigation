@@ -30,6 +30,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.example.jin.hellofengmap.location.Destination;
 import com.example.jin.hellofengmap.location.Location;
 import com.example.jin.hellofengmap.location.iBeacon;
 import com.example.jin.hellofengmap.location.iBeaconClass;
@@ -38,7 +39,10 @@ import com.example.jin.hellofengmap.utils.ViewHelper;
 import com.fengmap.android.FMDevice;
 import com.fengmap.android.FMErrorMsg;
 import com.fengmap.android.FMMapSDK;
+import com.fengmap.android.analysis.navi.FMNaviAnalyser;
+import com.fengmap.android.analysis.navi.FMNaviResult;
 import com.fengmap.android.data.OnFMDownloadProgressListener;
+import com.fengmap.android.exception.FMObjectException;
 import com.fengmap.android.map.FMMap;
 import com.fengmap.android.map.FMMapUpgradeInfo;
 import com.fengmap.android.map.FMMapView;
@@ -53,17 +57,22 @@ import com.fengmap.android.map.event.OnFMSwitchGroupListener;
 import com.fengmap.android.map.geometry.FMMapCoord;
 import com.fengmap.android.map.layer.FMFacilityLayer;
 import com.fengmap.android.map.layer.FMImageLayer;
+import com.fengmap.android.map.layer.FMLineLayer;
 import com.fengmap.android.map.layer.FMLocationLayer;
 import com.fengmap.android.map.layer.FMModelLayer;
 import com.fengmap.android.map.marker.FMFacility;
 import com.fengmap.android.map.marker.FMImageMarker;
+import com.fengmap.android.map.marker.FMLineMarker;
 import com.fengmap.android.map.marker.FMLocationMarker;
 import com.fengmap.android.map.marker.FMModel;
 import com.fengmap.android.map.marker.FMNode;
+import com.fengmap.android.map.marker.FMSegment;
 import com.fengmap.android.widget.FM3DControllerButton;
 import com.fengmap.android.widget.FMFloorControllerComponent;
 import com.fengmap.android.widget.FMZoomComponent;
 
+import java.io.FileNotFoundException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -75,6 +84,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     FMMap mFMMap;
     FMMapView mapView;
     FloatingActionButton btnMyLocation;//定位按钮
+
+    Handler mHandler = new Handler();
 
     //地图控制按钮
     private FM3DControllerButton m3DTextButton;
@@ -97,6 +108,40 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
     private FMLocationLayer mLocationLayer;
     private FMLocationMarker mLocationMarker;
+
+    /**
+     * 线图层
+     */
+    protected FMLineLayer mLineLayer;
+    /**
+     * 导航分析
+     */
+    protected FMNaviAnalyser mNaviAnalyser;
+    /**
+     * 起点坐标
+     */
+    protected FMMapCoord stCoord;
+    /**
+     * 起点楼层
+     */
+    protected int stGroupId;
+    /**
+     * 起点图层
+     */
+    protected FMImageLayer stImageLayer;
+    /**
+     * 终点坐标
+     */
+    protected FMMapCoord endCoord;
+    /**
+     * 终点楼层id
+     */
+    protected int endGroupId;
+    /**
+     * 终点图层
+     */
+    protected FMImageLayer endImageLayer;
+
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override
@@ -173,9 +218,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             @Override
             public void onClick(View v) {
                 Location.isProblem = false;//默认无问题
-                if (isScanning == false) {
-                    beginScan();
-                }
+                beginScanLocation();
                 Log.d("button", "onClick: location");
             }
         });
@@ -190,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mapView = (FMMapView) findViewById(R.id.mapview);
         mFMMap = mapView.getFMMap();       //获取地图操作对象
 
-        String bid = "10380";             //地图id
+        String bid = "10347";             //地图id
         //监听地图的加载状况
         mFMMap.setOnFMMapInitListener(this);
         //打开地图
@@ -227,6 +270,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
 
         int groupId = mFMMap.getFocusGroupId();
+        //清空标记
+        mImageLayer.removeAll();
         //公共设施图层
         mFacilityLayer = mFMMap.getFMLayerProxy().getFMFacilityLayer(groupId);
         mFacilityLayer.setOnFMNodeListener(mOnFacilityClickListener);
@@ -244,6 +289,19 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //获取定位图层
         mLocationLayer = mFMMap.getFMLayerProxy().getFMLocationLayer();
         mFMMap.addLayer(mLocationLayer);
+
+        //线图层
+        mLineLayer = mFMMap.getFMLayerProxy().getFMLineLayer();
+        mFMMap.addLayer(mLineLayer);
+
+        //导航分析
+        try {
+            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("10347");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (FMObjectException e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -333,10 +391,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     void switchFloor(int groupId) {
         mFMMap.setFocusByGroupIdAnimated(groupId, new FMLinearInterpolator(), this);
-        //清空标记
-        mImageLayer.removeAll();
+
         //切换图层
         mGroupId = groupId;
+        //mImageLayer.removeAll();
         //公共设施图层
         mFacilityLayer = mFMMap.getFMLayerProxy().getFMFacilityLayer(groupId);
         mFacilityLayer.setOnFMNodeListener(mOnFacilityClickListener);
@@ -354,6 +412,31 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //获取定位图层
         mLocationLayer = mFMMap.getFMLayerProxy().getFMLocationLayer();
         mFMMap.addLayer(mLocationLayer);
+
+        //线图层
+        mLineLayer = mFMMap.getFMLayerProxy().getFMLineLayer();
+        mFMMap.addLayer(mLineLayer);
+
+        //导航分析
+        try {
+            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("10347");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (FMObjectException e) {
+            e.printStackTrace();
+        }
+
+        //清空标记
+        if (groupId == Destination.groupId) {
+            showMarket(Destination.myDestination);
+        }
+
+        //清除定位点标注
+        if (groupId != Location.groupId) {
+            clearLocationMarker();
+        } else {
+            updateLocationMarker();
+        }
 
         Log.d("切换楼层成功", "switchFloor: ");
     }
@@ -522,7 +605,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     }
 
 
-    /**
+        /**
      * 模型点击事件
      */
     private OnFMNodeListener mOnModelCLickListener = new OnFMNodeListener() {
@@ -536,7 +619,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
             model.setSelected(true);
             mFMMap.updateMap();
-            FMMapCoord centerMapCoord = model.getCenterMapCoord();
+            final FMMapCoord centerMapCoord = model.getCenterMapCoord();
 
             showMarket(centerMapCoord);
 
@@ -560,7 +643,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             go_there.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Toast.makeText(MainActivity.this, "gogogo", Toast.LENGTH_SHORT).show();
+                    goThere(centerMapCoord);
                 }
             });
             snackbar.show();
@@ -581,7 +664,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         @Override
         public boolean onClick(FMNode node) {
             FMFacility facility = (FMFacility) node;
-            FMMapCoord centerMapCoord = facility.getPosition();
+            final FMMapCoord centerMapCoord = facility.getPosition();
 
             showMarket(centerMapCoord);
 
@@ -601,7 +684,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             go_there.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Toast.makeText(MainActivity.this, "gogogo", Toast.LENGTH_SHORT).show();
+                    goThere(centerMapCoord);
                 }
             });
             snackbar.show();
@@ -615,6 +698,20 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             return false;
         }
     };
+
+    void goThere(FMMapCoord centerMapCoord) {
+        Toast.makeText(MainActivity.this, "gogogo", Toast.LENGTH_SHORT).show();
+        Destination.myDestination = centerMapCoord;
+        Destination.groupId = mGroupId;
+        endGroupId=Destination.groupId;
+        endCoord=Destination.myDestination;
+        createEndImageMarker();
+        //开始分析导航
+        analyzeNavigation();
+        // 画完置空
+        stCoord = null;
+        endCoord = null;
+    }
 
     /**
      * 地图点击事件
@@ -637,8 +734,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             snackbar.dismiss();
         }
 
-//        String content = getString(R.string.event_click_content, "地图", mGroupId, pX, pY);
-//        Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+        String content = getString(R.string.event_click_content, "地图", mGroupId, pX, pY);
+        Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
         //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
     }
 
@@ -683,14 +780,26 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         return true;
     }
 
-    public void beginScan() {
-        scanLeDevice(true);
+    /**
+     * 开始定位
+     */
+    public void beginScanLocation() {
+        scanLeDevice(true, 2000);
+        timer = new Timer(true);
+        timer.schedule(task, 1000); //延时0ms后执行
+    }
+
+    /**
+     * 开始导航
+     */
+    public void beginScanNavigate() {
+        scanLeDevice(true, 0);
         timer = new Timer(true);
         timer.schedule(task, 4000, 3000); //延时0ms后执行，1000ms执行一次
     }
 
     public void stopScan() {
-        scanLeDevice(false);
+        scanLeDevice(false, 0);
         timer.cancel();
     }
 
@@ -701,25 +810,26 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * @param enable
      */
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-    private void scanLeDevice(final boolean enable) {
-        if (enable)//enable =true就是说要开始扫描
+    private void scanLeDevice(final boolean enable, long time) {
+        if (enable && time == 0)//enable =true就是说要开始扫描
         {
+            mBluetoothAdapter.startLeScan(mLeScanCallback);//这句就是开始扫描了
+            isScanning = true;
+        } else if (enable && time > 0) {
             // Stops scanning after a pre-defined scan period.
             // 下边的代码是为了在 SCAN_PERIOD （以毫秒位单位）后，停止扫描的
             // 如果需要不停的扫描，可以注释掉
-//            mHandler.postDelayed(new Runnable()
-//            {
-//                @Override
-//                public void run()
-//                {
-//                    mBluetoothAdapter.stopLeScan(mLeScanCallback);
-//                    // 这个是重置menu，将 menu中的停止按钮->扫描按钮
-//                    invalidateOptionsMenu();
-//                }
-//            }, SCAN_PERIOD);
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mBluetoothAdapter.stopLeScan(mLeScanCallback);
+                    // 这个是重置menu，将 menu中的停止按钮->扫描按钮
+                    invalidateOptionsMenu();
+                }
+            }, time);
             mBluetoothAdapter.startLeScan(mLeScanCallback);//这句就是开始扫描了
             isScanning = true;
-        } else {
+        } else if (!enable) {
             mBluetoothAdapter.stopLeScan(mLeScanCallback);//这句就是停止扫描
             isScanning = false;
         }
@@ -747,7 +857,6 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
     };
 
-
     //定时执行
     TimerTask task = new TimerTask() {
         public void run() {
@@ -767,8 +876,6 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case 0:
-                    Toast.makeText(MainActivity.this, "切换楼层！", Toast.LENGTH_SHORT).show();
-                    updateFloorButton();
                     break;
                 case 1://1s到，处理、发送数据
                     if (Location.isProblem == false) {
@@ -778,7 +885,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     mIBeaconList.clear();
                     break;
                 case 2:
-
+                    locationMarker();
                     break;
                 default:
                     break;
@@ -797,50 +904,72 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         String TAG = "LocationMarker";
 
-        Location.groupId = 3;
+        Location.groupId = 1;
         Location.myLocation.x = 1.296164E7;
         Location.myLocation.y = 4861845.0;
 
-        //if (Location.groupId != 0 && Location.myLocation.x != 0 && Location.myLocation.y != 0) {
-            //changeFloorButton();
-        handler.sendEmptyMessage(0);
+        if (Location.groupId != 0 && Location.myLocation.x != 0 && Location.myLocation.y != 0) {
+
             Log.d(TAG, "locationMarker: " + Location.groupId);
+            //切换地图
             switchFloor(Location.groupId);
+            //更新楼层控制组件
+            updateFloorButton(Location.groupId);
+            //刷新定位点
+            updateLocationMarker();
 
-            //updateLocationMarker();
+            clear();
 
-        //}
+            stCoord = Location.myLocation;
+            stGroupId = Location.groupId;
+            createStartImageMarker();
+
+        }
         return true;
     }
 
     /**
      * 修改楼层控件
      */
-    void updateFloorButton() {
-        String TAG="切换楼层控件";
-        Log.d(TAG, "handleMessage: GroupId"+Location.groupId);
+    void updateFloorButton(int groupId) {
+        String TAG = "切换楼层控件";
+        Log.d(TAG, "handleMessage: GroupId" + Location.groupId);
         FMFloorControllerComponent.FloorData[] mFloorDatas = mFloorComponent.getFloorDatas();
         for (int i = 0; i < mFloorDatas.length; i++) {
-            Log.d(TAG, "changeFloorButton: length:"+mFloorDatas.length);
-            Log.d(TAG, "changeFloorButton: forgroupid:"+mFloorDatas[i].getGroupId());
-            if (mFloorDatas[i].getGroupId() == Location.groupId) {
+            if (mFloorDatas[i].getGroupId() == groupId) {
                 Log.d(TAG, "changeFloorButton: ====");
                 if (i != mFloorComponent.getSelectedPosition()) {
                     mFloorComponent.setSelected(i);
-                    Log.d(TAG, "changeFloorButton: ----");
+                    invokeFloorComponentNotify(mFloorComponent);
                 }
                 break;
             }
-            Log.d(TAG, "handleMessage: i"+i);
         }
     }
+
+    void invokeFloorComponentNotify(FMFloorControllerComponent floorComponent) {
+        Class clazz = FMFloorControllerComponent.class;
+        try {
+            Method method = clazz.getDeclaredMethod("updateData");
+            method.setAccessible(true);
+            method.invoke(floorComponent);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     /**
      * 更新定位点位置
      */
     private void updateLocationMarker() {
+        //FMMapCoord CENTER_COORD = new FMMapCoord(1.296164E7, 4861845.0);
+        String TAG = "定位点";
+        Log.d(TAG, "updateLocationMarker: begin");
         if (mLocationMarker == null) {
+            Log.d(TAG, "updateLocationMarker: add");
             int groupId = mFMMap.getFocusGroupId();
+            Log.d(TAG, "updateLocationMarker: groupId=" + groupId);
             mLocationMarker = new FMLocationMarker(groupId, Location.myLocation);
             //设置定位点图片
             mLocationMarker.setActiveImageFromAssets("active.png");
@@ -850,6 +979,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             mLocationLayer.addMarker(mLocationMarker);
         } else {
             //更新定位点位置和方向
+            Log.d(TAG, "updateLocationMarker: update");
             float angle = 0;
             mLocationMarker.updateAngleAndPosition(angle, Location.myLocation);
         }
@@ -859,10 +989,116 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 清除定位标注
      */
     private void clearLocationMarker() {
+        String TAG = "定位点";
         if (mLocationLayer != null) {
+            Log.d(TAG, "clearLocationMarker: clear");
             mLocationLayer.removeAll();
 
             mLocationMarker = null;
         }
+    }
+
+
+    /**
+     * 开始分析导航
+     */
+    private void analyzeNavigation() {
+//        stGroupId=Location.groupId;
+//        stCoord=Location.myLocation;
+//        endGroupId=Destination.groupId;
+//        endCoord=Destination.myDestination;
+        int type = mNaviAnalyser.analyzeNavi(stGroupId, stCoord, endGroupId, endCoord,
+                FMNaviAnalyser.FMNaviModule.MODULE_SHORTEST);
+        if (type == FMNaviAnalyser.FMRouteCalcuResult.ROUTE_SUCCESS) {
+            addLineMarker();
+        }
+    }
+
+    /**
+     * 清理所有的线与图层
+     */
+    protected void clear() {
+        clearLineLayer();
+        clearStartImageLayer();
+        clearEndImageLayer();
+    }
+
+
+    /**
+     * 清除线图层
+     */
+    protected void clearLineLayer() {
+        if (mLineLayer != null) {
+            mLineLayer.removeAll();
+        }
+    }
+
+    /**
+     * 清除起点图层
+     */
+    protected void clearStartImageLayer() {
+        if (stImageLayer != null) {
+            stImageLayer.removeAll();
+            mFMMap.removeLayer(stImageLayer); // 移除图层
+            stImageLayer = null;
+        }
+    }
+
+    /**
+     * 清除终点图层
+     */
+    protected void clearEndImageLayer() {
+        if (endImageLayer != null) {
+            endImageLayer.removeAll();
+            mFMMap.removeLayer(endImageLayer); // 移除图层
+
+            endImageLayer = null;
+        }
+    }
+
+
+    /**
+     *  添加线标注
+     */
+    protected void addLineMarker() {
+        ArrayList<FMNaviResult> results = mNaviAnalyser.getNaviResults();
+        // 填充导航数据
+        ArrayList<FMSegment> segments = new ArrayList<>();
+        for (FMNaviResult r : results) {
+            int groupId = r.getGroupId();
+            FMSegment s = new FMSegment(groupId, r.getPointList());
+            segments.add(s);
+        }
+        //添加LineMarker
+        FMLineMarker lineMarker = new FMLineMarker(segments);
+        lineMarker.setLineWidth(3f);
+        mLineLayer.addMarker(lineMarker);
+    }
+
+    /**
+     * 创建起点图标
+     */
+    protected void createStartImageMarker() {
+        clearStartImageLayer();
+        // 添加起点图层
+        stImageLayer = new FMImageLayer(mFMMap, stGroupId);
+        mFMMap.addLayer(stImageLayer);
+//        // 标注物样式
+//        FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), stCoord, R.drawable.start);
+//        stImageLayer.addMarker(imageMarker);
+    }
+
+    /**
+     * 创建终点图层
+     */
+    protected void createEndImageMarker() {
+        clearEndImageLayer();
+        // 添加起点图层
+        endImageLayer = new FMImageLayer(mFMMap, endGroupId);
+        mFMMap.addLayer(endImageLayer);
+        mImageLayer.removeAll();
+        // 标注物样式
+        FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), endCoord, R.drawable.end);
+        endImageLayer.addMarker(imageMarker);
     }
 }
