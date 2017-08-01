@@ -7,11 +7,14 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.CoordinatorLayout;
@@ -28,12 +31,17 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
+import android.graphics.Bitmap;
 
 import com.example.jin.hellofengmap.location.Destination;
+import com.example.jin.hellofengmap.location.FitRssi;
 import com.example.jin.hellofengmap.location.Location;
 import com.example.jin.hellofengmap.location.iBeacon;
 import com.example.jin.hellofengmap.location.iBeaconClass;
+import com.example.jin.hellofengmap.location.iBeacons;
+import com.example.jin.hellofengmap.utils.ConvertUtils;
 import com.example.jin.hellofengmap.utils.SnackbarUtil;
 import com.example.jin.hellofengmap.utils.ViewHelper;
 import com.fengmap.android.FMDevice;
@@ -78,8 +86,24 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import okhttp3.FormBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+import static com.example.jin.hellofengmap.location.Location.groupId;
+import static com.example.jin.hellofengmap.location.Location.myLocation;
+
 public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,
-        OnFMCompassListener, OnFMSwitchGroupListener, OnFMMapClickListener {
+        OnFMCompassListener, OnFMSwitchGroupListener, OnFMMapClickListener, Runnable {
+
+
+    //个人信息里面的图片，昵称，电话，性别
+    public static Bitmap mainBitmap;
+    public static String mainName = new String("昵称");
+    public static String mainPhone = new String("电话");
+    public static String mainGender = new String("性别");
 
     FMMap mFMMap;
     FMMapView mapView;
@@ -270,8 +294,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
 
         int groupId = mFMMap.getFocusGroupId();
-        //清空标记
-        mImageLayer.removeAll();
+
         //公共设施图层
         mFacilityLayer = mFMMap.getFMLayerProxy().getFMFacilityLayer(groupId);
         mFacilityLayer.setOnFMNodeListener(mOnFacilityClickListener);
@@ -394,7 +417,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         //切换图层
         mGroupId = groupId;
-        //mImageLayer.removeAll();
+        //清空标记
+        mImageLayer.removeAll();
         //公共设施图层
         mFacilityLayer = mFMMap.getFMLayerProxy().getFMFacilityLayer(groupId);
         mFacilityLayer.setOnFMNodeListener(mOnFacilityClickListener);
@@ -417,6 +441,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mLineLayer = mFMMap.getFMLayerProxy().getFMLineLayer();
         mFMMap.addLayer(mLineLayer);
 
+        //清空标记
+        mImageLayer.removeAll();
+
         //导航分析
         try {
             mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("10347");
@@ -425,14 +452,14 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         } catch (FMObjectException e) {
             e.printStackTrace();
         }
-
-        //清空标记
-        if (groupId == Destination.groupId) {
-            showMarket(Destination.myDestination);
-        }
+//
+//        //显示目的地标记
+//        if (groupId == Destination.groupId) {
+//            showMarket(Destination.myDestination);
+//        }
 
         //清除定位点标注
-        if (groupId != Location.groupId) {
+        if (mGroupId != Location.groupId) {
             clearLocationMarker();
         } else {
             updateLocationMarker();
@@ -605,7 +632,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     }
 
 
-        /**
+    /**
      * 模型点击事件
      */
     private OnFMNodeListener mOnModelCLickListener = new OnFMNodeListener() {
@@ -700,11 +727,19 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     };
 
     void goThere(FMMapCoord centerMapCoord) {
+        if (groupId == 0) {
+            Toast.makeText(MainActivity.this, "请先确定你的位置", Toast.LENGTH_SHORT).show();
+            return;
+        }
         Toast.makeText(MainActivity.this, "gogogo", Toast.LENGTH_SHORT).show();
         Destination.myDestination = centerMapCoord;
         Destination.groupId = mGroupId;
-        endGroupId=Destination.groupId;
-        endCoord=Destination.myDestination;
+        endGroupId = Destination.groupId;
+        endCoord = Destination.myDestination;
+
+        clear();
+        locationMarker();
+
         createEndImageMarker();
         //开始分析导航
         analyzeNavigation();
@@ -734,8 +769,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             snackbar.dismiss();
         }
 
-        String content = getString(R.string.event_click_content, "地图", mGroupId, pX, pY);
-        Toast.makeText(MainActivity.this,content,Toast.LENGTH_SHORT).show();
+        //String content = getString(R.string.event_click_content, "地图", mGroupId, pX, pY);
+        //Toast.makeText(MainActivity.this, content, Toast.LENGTH_SHORT).show();
         //ViewHelper.setViewText(MainActivity.this, R.id.map_result, content);
     }
 
@@ -785,8 +820,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     public void beginScanLocation() {
         scanLeDevice(true, 2000);
-        timer = new Timer(true);
-        timer.schedule(task, 1000); //延时0ms后执行
+
+        Thread thread = new Thread(MainActivity.this);//开启一个线程来延时
+        thread.start();//启动线程
     }
 
     /**
@@ -879,8 +915,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     break;
                 case 1://1s到，处理、发送数据
                     if (Location.isProblem == false) {
-                        //Location.ProcessData(MainActivity.this, mIBeaconList);
-                        locationMarker();
+                        ProcessData(MainActivity.this, mIBeaconList);
                     }
                     mIBeaconList.clear();
                     break;
@@ -893,6 +928,19 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
     };
 
+//    void newThreadLocationIsOk() {
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                while (true) {
+//                    if (Location.isOk == true) {
+//                        handler.sendEmptyMessage(2);
+//                    }
+//                }
+//            }
+//        }).start();
+//    }
+
     /**
      * 添加/更新定位点标注
      *
@@ -904,24 +952,24 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         String TAG = "LocationMarker";
 
-        Location.groupId = 1;
-        Location.myLocation.x = 1.296164E7;
-        Location.myLocation.y = 4861845.0;
+//        Location.groupId = 1;
+//        Location.myLocation.x = 1.296164E7;
+//        Location.myLocation.y = 4861845.0;
 
-        if (Location.groupId != 0 && Location.myLocation.x != 0 && Location.myLocation.y != 0) {
+        if (groupId != 0 && myLocation.x != 0 && myLocation.y != 0) {
 
-            Log.d(TAG, "locationMarker: " + Location.groupId);
+            Log.d(TAG, "locationMarker: " + groupId);
+            //清空现有
+            clear();
             //切换地图
-            switchFloor(Location.groupId);
+            switchFloor(groupId);
             //更新楼层控制组件
-            updateFloorButton(Location.groupId);
+            updateFloorButton(groupId);
             //刷新定位点
             updateLocationMarker();
 
-            clear();
-
-            stCoord = Location.myLocation;
-            stGroupId = Location.groupId;
+            stCoord = myLocation;
+            stGroupId = groupId;
             createStartImageMarker();
 
         }
@@ -933,7 +981,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     void updateFloorButton(int groupId) {
         String TAG = "切换楼层控件";
-        Log.d(TAG, "handleMessage: GroupId" + Location.groupId);
+        Log.d(TAG, "handleMessage: GroupId" + groupId);
         FMFloorControllerComponent.FloorData[] mFloorDatas = mFloorComponent.getFloorDatas();
         for (int i = 0; i < mFloorDatas.length; i++) {
             if (mFloorDatas[i].getGroupId() == groupId) {
@@ -970,7 +1018,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             Log.d(TAG, "updateLocationMarker: add");
             int groupId = mFMMap.getFocusGroupId();
             Log.d(TAG, "updateLocationMarker: groupId=" + groupId);
-            mLocationMarker = new FMLocationMarker(groupId, Location.myLocation);
+            mLocationMarker = new FMLocationMarker(groupId, myLocation);
             //设置定位点图片
             mLocationMarker.setActiveImageFromAssets("active.png");
             //设置定位图片宽高
@@ -981,7 +1029,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             //更新定位点位置和方向
             Log.d(TAG, "updateLocationMarker: update");
             float angle = 0;
-            mLocationMarker.updateAngleAndPosition(angle, Location.myLocation);
+            mLocationMarker.updateAngleAndPosition(angle, myLocation);
         }
     }
 
@@ -1011,9 +1059,40 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 FMNaviAnalyser.FMNaviModule.MODULE_SHORTEST);
         if (type == FMNaviAnalyser.FMRouteCalcuResult.ROUTE_SUCCESS) {
             addLineMarker();
+            //行走总距离
+            double sceneRouteLength = mNaviAnalyser.getSceneRouteLength();
+            setSceneRouteLength(sceneRouteLength);
         }
     }
+    /**
+     * 格式化距离
+     *
+     * @param sceneRouteLength 行走总距离
+     */
+    private void setSceneRouteLength(double sceneRouteLength) {
+        int time = ConvertUtils.getTimeByWalk(sceneRouteLength);
+        String text = getString(R.string.label_distance_format, sceneRouteLength, time);
 
+//        TextView textView = ViewHelper.getView(FMNavigationDistance.this, R.id.txt_info);
+//        textView.setText(text);
+        CoordinatorLayout mCoordinatorLayout = (CoordinatorLayout) findViewById(R.id.coordinatorLayout);
+        //建立SnackBar提示用户点击模型的信息
+        snackbar = Snackbar.make(mCoordinatorLayout, text, Snackbar.LENGTH_INDEFINITE);
+        SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.blue);
+        SnackbarUtil.SnackbarAddView(snackbar, R.layout.snackbar, 0);
+        View view = snackbar.getView();
+        Button go_there = (Button) view.findViewById(R.id.go);
+        go_there.setText("开始导航");
+
+        //"开始导航"按钮的点击事件
+        go_there.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast.makeText(MainActivity.this,"开始导航",Toast.LENGTH_SHORT).show();
+            }
+        });
+        snackbar.show();
+    }
     /**
      * 清理所有的线与图层
      */
@@ -1058,7 +1137,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
 
     /**
-     *  添加线标注
+     * 添加线标注
      */
     protected void addLineMarker() {
         ArrayList<FMNaviResult> results = mNaviAnalyser.getNaviResults();
@@ -1100,5 +1179,205 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         // 标注物样式
         FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), endCoord, R.drawable.end);
         endImageLayer.addMarker(imageMarker);
+    }
+
+    @Override
+    public void run() {
+        try {
+            Thread.sleep(4000);//睡一段时间
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        handler.sendEmptyMessage(1);//睡醒来了，传送消息，扫描完成
+    }
+
+    /**
+     * 处理、保存、上传扫描信息
+     *
+     * @author jin
+     * Data:2017/7/17
+     */
+    public void ProcessData(Context contextMain, List<iBeacon> mIBeaconList) {
+
+        int count = 0;//记录扫描到iBeacon的数量
+
+        Location.isOk = false;
+
+        //扫描到几个iBeacon（MAC地址不同），就置入几个
+        // iBeacons类继承于iBeacon类，保存了一个iBeacon在一段时间内所有的RSSI信息
+        List<iBeacons> iBeaconsList = new ArrayList<>();
+
+        //所有扫描到的iBeacon信号的MAC地址都置入该List，扫描到几次就存入几次
+        List<String> iBeaconMacList = new ArrayList<>();
+
+        //处理后的iBeacon信息，一个iBeacon对应一条数据
+        List<iBeacon> answerIBeaconList = new ArrayList<>();
+
+        if (mIBeaconList.size() == 0) {
+            Toast.makeText(contextMain, "您当前环境暂不支持室内定位", Toast.LENGTH_SHORT).show();
+            Location.isProblem = true;
+            return;
+        }
+
+        //遍历所有接收到的信号信息
+        for (iBeacon item : mIBeaconList) {
+            //Log.d(TAG, "run: item mac:"+item.getBluetoothAddress());
+            //统计iBeacon个数
+            if (iBeaconMacList.indexOf(item.getBluetoothAddress()) == -1) {
+                //首次在该位置接收到某iBeacon信号
+                count++;
+                iBeaconMacList.add(item.getBluetoothAddress());
+                iBeaconsList.add(new iBeacons(item));
+            } else {//非首次在该位置接收到某iBeacon信号
+                //遍历iBeacons类的List
+                for (int i = 0; i < iBeaconsList.size(); i++) {
+                    //找到已存在的对象
+                    if (item.getBluetoothAddress().equals(iBeaconsList.get(i).getBluetoothAddress())) {
+                        //向已存在的对象中添加RSSI数据
+                        iBeaconsList.get(i).rssiList.add(String.valueOf(item.getRssi()));
+                    }
+                }
+            }
+        }
+        //Log.d(TAG, "run: count="+count);
+        //Log.d(TAG, "run: iBeaconsList size="+iBeaconsList.size());
+
+        //处理iBeacons类，将处理结果置入answerIBeaconList
+        for (iBeacons ibeacons : iBeaconsList) {
+            answerIBeaconList.add(new iBeacon(ibeacons, Integer.valueOf(FitRssi.FitRssiData(ibeacons.getRssiList()))));
+        }
+
+        try {
+            //这里Place先不存数据库，直接上传
+            //存数据库发生了IBeaconList丢失的情况，
+            // 在数据库取出的Place中再次获取IBeaconList的时候返回了null
+            SendDatebase(contextMain, answerIBeaconList);
+        } catch (Exception e) {
+            //Toast.makeText(RecordActivity.this,e.getMessage(),Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
+     * 将数据上传至服务器后台
+     *
+     * @param place
+     * @author fang
+     * Data:2017/7/16
+     */
+//    protected static final String IP = "192.168.1.109";
+//    protected static final String URL = "http://" + IP + ":80/locate";
+
+    protected static final String IP = "192.168.1.104";
+    protected static final String URL = "http://" + IP + ":80/locate";
+
+    public void SendDatebase(final Context contextMain, final List<iBeacon> iBeaconList) {
+
+        final String TAG = "SendDate";
+        Log.d(TAG, "SendDatebase:" + iBeaconListToString(iBeaconList));
+
+        final Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                //执行耗时操作
+                try {
+                    Log.d(TAG, "run: " + URL);
+                    OkHttpClient client = new OkHttpClient();
+                    RequestBody requestBody = new FormBody.Builder()
+                            .add("recordData", iBeaconListToString(iBeaconList))
+                            .build();
+                    Request request = new Request.Builder()
+                            .url(URL)
+                            .post(requestBody)
+                            .build();
+                    Response response = client.newCall(request).execute();
+                    Log.d("SendDatabase", "run: fuuuuuuuuuck   " + response);
+                    if (response.isSuccessful()) {
+                        //广播上传成功消息
+                        //Toast.makeText(contextMain,"Success!",Toast.LENGTH_SHORT).show();//广播上传成功
+                        Log.d(TAG, "run: SendDate Success!!!!!!!" + response);
+                        Log.d(TAG, "run: Response Message:" + response.header("location"));
+                        //解析数据失败
+                        if (dealWithResponse(response.header("location")) == true) {
+                            Location.isOk = true;
+                            handler.sendEmptyMessage(2);
+                        } else {
+                            Toast.makeText(contextMain, "您当前环境暂不支持定位", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(contextMain, "上传失败，数据格式错误", Toast.LENGTH_LONG).show();
+                        Location.isProblem = true;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(contextMain, "无法连接到服务器，请检查网络设置", Toast.LENGTH_LONG).show();
+                    Location.isProblem = true;
+                    //Log.d("SendDatabase Fail ", e.getMessage());
+                }
+            }
+        };
+        new Thread() {
+            public void run() {
+                Looper.prepare();
+                new Handler().post(runnable);//在子线程中直接去new 一个handler
+                Looper.loop();//这种情况下，Runnable对象是运行在子线程中的，可以进行联网操作，但是不能更新UI
+            }
+        }.start();
+
+    }
+
+    /**
+     * 解析后台返回的定位位置信息
+     *
+     * @param message
+     * @return
+     */
+    private boolean dealWithResponse(String message) {
+
+        String TAG = "Location";
+        String floor = "0";
+        String x = "0";
+        String y = "0";
+        try {
+            if (message != null) {
+                int maohao = message.indexOf(':');
+                int xiegang = message.indexOf('/');
+
+                floor = message.substring(maohao + 1, xiegang);
+
+                maohao = message.indexOf(':', maohao + 1);
+                xiegang = message.indexOf('/', xiegang + 1);
+
+                x = message.substring(maohao + 1, xiegang);
+
+                maohao = message.indexOf(':', maohao + 1);
+
+                y = message.substring(maohao + 1);
+            } else {
+                return false;
+            }
+
+            Location.groupId = Integer.valueOf(floor);
+            Location.myLocation.x = Double.valueOf(x);
+            Location.myLocation.y = Double.valueOf(y);
+
+            Log.d(TAG, "dealWithResponse: groupId:" + Location.groupId);
+            Log.d(TAG, "dealWithResponse: x:" + x);
+            Log.d(TAG, "dealWithResponse: y:" + y);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return true;
+    }
+
+    private String iBeaconListToString(List<iBeacon> iBeaconList) {
+        String answer = "";
+        for (iBeacon ibeacon : iBeaconList) {
+            answer += ibeacon.toString();
+        }
+        return answer;
     }
 }

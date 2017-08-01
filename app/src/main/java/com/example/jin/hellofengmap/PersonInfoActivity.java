@@ -1,12 +1,15 @@
 package com.example.jin.hellofengmap;
 
 import android.annotation.TargetApi;
+import android.app.Dialog;
 import android.content.ContentUris;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.DocumentsContract;
@@ -14,12 +17,15 @@ import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import de.hdodenhof.circleimageview.CircleImageView;
@@ -30,11 +36,21 @@ public class PersonInfoActivity extends AppCompatActivity {
 
     public static final int CHOOSE_PHOTO=2;
 
+    private String userName=new String();
+
+    private String userPhone=new String();
+
+    private String userGender=new String();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_person_info);
-        Button change_head=(Button)findViewById(R.id.change_head);
+        userName=MainActivity.mainName;
+        userPhone=MainActivity.mainPhone;
+        userGender=MainActivity.mainGender;
+        //更换头像textview的点击事件
+        TextView change_head=(TextView) findViewById(R.id.change_head);
         change_head.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view) {
@@ -50,6 +66,110 @@ public class PersonInfoActivity extends AppCompatActivity {
 
 
 
+            }
+        });
+
+        final TextView nickName=(TextView)findViewById(R.id.nick_name);
+        nickName.setText(MainActivity.mainName);
+        final TextView gender=(TextView)findViewById(R.id.gender);
+        gender.setText(MainActivity.mainGender);
+        final TextView phoneNumber=(TextView)findViewById(R.id.phone_number);
+        phoneNumber.setText(MainActivity.mainPhone);
+        //昵称的点击事件
+        nickName.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                final EditText editText=new EditText(PersonInfoActivity.this);
+                AlertDialog.Builder builder=new AlertDialog.Builder(PersonInfoActivity.this);
+                builder.setTitle("输入昵称");
+                builder.setView(editText);
+                builder.setPositiveButton("确定", new DialogInterface.OnClickListener(){
+                    //确定按钮的点击事件
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        nickName.setText(editText.getText().toString());
+                        userName=editText.getText().toString();
+                    }});
+                builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    //取消按钮的点击事件
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                    }});
+                builder.show();
+
+            }
+        });
+
+        gender.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                final String[] array = new String[] { "男","女" };
+
+                Dialog alertDialog = new AlertDialog.Builder(PersonInfoActivity.this)
+                        .setTitle("选择性别")
+                        .setItems(array, new DialogInterface.OnClickListener() {
+                            //性别选择的点击事件
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                gender.setText(array[which]);
+                                userGender=array[which];
+                            }
+                        })
+                        .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                // TODO Auto-generated method stub
+                                }
+                        })
+                        .create();
+                alertDialog.show();
+            }
+        });
+
+        phoneNumber.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                final EditText editText=new EditText(PersonInfoActivity.this);
+                AlertDialog.Builder builder=new AlertDialog.Builder(PersonInfoActivity.this);
+                builder.setTitle("电话");
+                builder.setView(editText);
+                builder.setPositiveButton("确定", new DialogInterface.OnClickListener(){
+                    //确定按钮的点击事件
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        phoneNumber.setText(editText.getText().toString());
+                        userPhone=editText.getText().toString();
+                    }});
+                builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    //取消按钮的点击事件
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                    }});
+
+                builder.show();
+            }
+        });
+
+        //保存按钮的点击事件
+        Button saveInfo=(Button)findViewById(R.id.save_info);
+        saveInfo.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                if(userName.length()>10||userName.length()==0)
+                    Toast.makeText(PersonInfoActivity.this,"昵称过长，请重新输入",Toast.LENGTH_SHORT).show();
+                else if(userGender.length()!=1)
+                    Toast.makeText(PersonInfoActivity.this,"请选择性别",Toast.LENGTH_SHORT).show();
+                else if(userPhone.length()!=11 || userPhone.charAt(0)!='1')
+                    Toast.makeText(PersonInfoActivity.this,"请输入正确的手机号",Toast.LENGTH_SHORT).show();
+                else{
+                    //输入合法的情况下,将信息传给MainActivity
+                    MainActivity.mainName=userName;
+                    MainActivity.mainGender=userGender;
+                    MainActivity.mainPhone=userPhone;
+                    finish();
+                }
             }
         });
     }
