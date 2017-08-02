@@ -641,7 +641,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             if (mClickedModel != null) {
                 mClickedModel.setSelected(false);
             }
-            FMModel model = (FMModel) node;
+            final FMModel model = (FMModel) node;
             mClickedModel = model;
 
             model.setSelected(true);
@@ -670,6 +670,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             go_there.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+                    Destination.name=model.getName();
                     goThere(centerMapCoord);
                 }
             });
@@ -711,6 +712,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             go_there.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+                    Destination.name="公共设施";
                     goThere(centerMapCoord);
                 }
             });
@@ -1071,7 +1073,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     private void setSceneRouteLength(double sceneRouteLength) {
         int time = ConvertUtils.getTimeByWalk(sceneRouteLength);
-        String text = getString(R.string.label_distance_format, sceneRouteLength, time);
+        String text = "距离："+(int)sceneRouteLength+"米\n"+"大约需要"+time+"分钟";
 
 //        TextView textView = ViewHelper.getView(FMNavigationDistance.this, R.id.txt_info);
 //        textView.setText(text);
@@ -1301,6 +1303,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                         //解析数据失败
                         if (dealWithResponse(response.header("location")) == true) {
                             Location.isOk = true;
+                            Toast.makeText(contextMain,"定位成功",Toast.LENGTH_SHORT).show();
                             handler.sendEmptyMessage(2);
                         } else {
                             Toast.makeText(contextMain, "您当前环境暂不支持定位", Toast.LENGTH_SHORT).show();
