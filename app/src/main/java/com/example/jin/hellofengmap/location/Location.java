@@ -25,6 +25,7 @@ import static android.R.attr.handle;
 
 /**
  * Created by jin on 2017/7/28.
+ * 定位位置信息
  */
 
 public class Location {
