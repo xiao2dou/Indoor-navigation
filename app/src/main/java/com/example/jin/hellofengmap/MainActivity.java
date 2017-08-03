@@ -12,6 +12,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -176,26 +177,30 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             // Android 6.0 之前无需运行时权限申请
         } else {
 
-            //android 6.0及以上动态权限申请
-            //判断是否有权限（蓝牙）
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                //请求权限
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-                //判断是否需要 向用户解释，为什么要申请该权限
-                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CONTACTS)) {
-                    Toast.makeText(this, "定位需要开启蓝牙", Toast.LENGTH_SHORT).show();
-                }
-            }
+//            //android 6.0及以上动态权限申请
+//            //判断是否有权限（蓝牙）
+//            if (ContextCompat.checkSelfPermission(this,
+//                    Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+//                //请求权限
+//                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
+//                //判断是否需要 向用户解释，为什么要申请该权限
+//                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CONTACTS)) {
+//                    Toast.makeText(this, "定位需要开启蓝牙", Toast.LENGTH_SHORT).show();
+//                }
+//            }
 
             // 先检测权限   目前SDK只需2个危险权限，读和写存储卡
             int p1 = MainActivity.this.checkSelfPermission(FMMapSDK.SDK_PERMISSIONS[0]);
             int p2 = MainActivity.this.checkSelfPermission(FMMapSDK.SDK_PERMISSIONS[1]);
+
+            int p3 = MainActivity.this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
             // 只要有任一权限没通过，则申请
             if (p1 != PackageManager.PERMISSION_GRANTED || p2 != PackageManager.PERMISSION_GRANTED) {
                 this.requestPermissions(FMMapSDK.SDK_PERMISSIONS,                //SDK所需权限数组
                         FMMapSDK.SDK_PERMISSION_RESULT_CODE);   //SDK权限申请处理结果返回码
-            } else {
+            } else if(p3!=PackageManager.PERMISSION_GRANTED){
+                this.requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},1);
+            }else {
                 // 已经拥有权限了
             }
         }
@@ -582,14 +587,30 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        // 申请权限被拒绝，则退出程序。
-        if (grantResults[0] != PackageManager.PERMISSION_GRANTED ||
-                grantResults[1] != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "拒绝了必要权限，无法使用该程序！", Toast.LENGTH_SHORT).show();
-            this.finish();
-        } else if (requestCode == FMMapSDK.SDK_PERMISSION_RESULT_CODE) {
-            // SDK所需权限被允许
+        switch (requestCode){
+            case FMMapSDK.SDK_PERMISSION_RESULT_CODE:
+                // 申请权限被拒绝，则退出程序。
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED ||
+                        grantResults[1] != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "拒绝了必要权限，无法使用该程序！", Toast.LENGTH_SHORT).show();
+                    this.finish();
+                } else if (requestCode == FMMapSDK.SDK_PERMISSION_RESULT_CODE) {
+                    // SDK所需权限被允许
+                }
+                break;
+            case 1:
+                if (grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED){
+                    //定位权限被允许
+                }else{
+                    Toast.makeText(this, "拒绝了必要权限，无法使用该程序！", Toast.LENGTH_SHORT).show();
+                    this.finish();
+                }
+                break;
+            default:
+                break;
         }
+
+
     }
 
 
@@ -670,7 +691,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             go_there.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Destination.name=model.getName();
+                    Destination.name = model.getName();
                     goThere(centerMapCoord);
                 }
             });
@@ -712,7 +733,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             go_there.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Destination.name="公共设施";
+                    Destination.name = "公共设施";
                     goThere(centerMapCoord);
                 }
             });
@@ -1066,6 +1087,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             setSceneRouteLength(sceneRouteLength);
         }
     }
+
     /**
      * 格式化距离
      *
@@ -1073,7 +1095,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     private void setSceneRouteLength(double sceneRouteLength) {
         int time = ConvertUtils.getTimeByWalk(sceneRouteLength);
-        String text = "距离："+(int)sceneRouteLength+"米\n"+"大约需要"+time+"分钟";
+        String text = "距离：" + (int) sceneRouteLength + "米\n" + "大约需要" + time + "分钟";
 
 //        TextView textView = ViewHelper.getView(FMNavigationDistance.this, R.id.txt_info);
 //        textView.setText(text);
@@ -1090,11 +1112,12 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         go_there.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast.makeText(MainActivity.this,"开始导航",Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "开始导航", Toast.LENGTH_SHORT).show();
             }
         });
         snackbar.show();
     }
+
     /**
      * 清理所有的线与图层
      */
@@ -1303,7 +1326,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                         //解析数据失败
                         if (dealWithResponse(response.header("location")) == true) {
                             Location.isOk = true;
-                            Toast.makeText(contextMain,"定位成功",Toast.LENGTH_SHORT).show();
+                            Toast.makeText(contextMain, "定位成功", Toast.LENGTH_SHORT).show();
                             handler.sendEmptyMessage(2);
                         } else {
                             Toast.makeText(contextMain, "您当前环境暂不支持定位", Toast.LENGTH_SHORT).show();

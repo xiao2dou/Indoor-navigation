@@ -37,22 +37,4 @@ public class Location {
 
     public static boolean isOk=false;
 
-
-
-    public FMMapCoord getMyLocation() {
-        return myLocation;
-    }
-
-    public void setMyLocation(FMMapCoord myLocation) {
-        this.myLocation = myLocation;
-    }
-
-    public int getGroupId() {
-        return groupId;
-    }
-
-    public void setGroupId(int groupId) {
-        this.groupId = groupId;
-    }
-
 }
