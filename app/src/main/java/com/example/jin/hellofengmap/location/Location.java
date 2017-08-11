@@ -30,9 +30,7 @@ import static android.R.attr.handle;
 
 public class Location {
 
-    public static FMMapCoord myLocation=new FMMapCoord(0,0,0);
-
-    public static int groupId=0;
+    public static MapCoord mapCoord=new MapCoord(0,new FMMapCoord(0,0,0));
 
     public static boolean isProblem = false;
 

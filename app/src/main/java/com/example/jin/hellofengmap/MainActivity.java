@@ -39,10 +39,12 @@ import android.graphics.Bitmap;
 import com.example.jin.hellofengmap.location.Destination;
 import com.example.jin.hellofengmap.location.FitRssi;
 import com.example.jin.hellofengmap.location.Location;
+import com.example.jin.hellofengmap.location.MapCoord;
 import com.example.jin.hellofengmap.location.iBeacon;
 import com.example.jin.hellofengmap.location.iBeaconClass;
 import com.example.jin.hellofengmap.location.iBeacons;
 import com.example.jin.hellofengmap.utils.ConvertUtils;
+import com.example.jin.hellofengmap.utils.FMLocationAPI;
 import com.example.jin.hellofengmap.utils.SnackbarUtil;
 import com.example.jin.hellofengmap.utils.ViewHelper;
 import com.fengmap.android.FMDevice;
@@ -58,6 +60,7 @@ import com.fengmap.android.map.FMMapView;
 import com.fengmap.android.map.FMPickMapCoordResult;
 import com.fengmap.android.map.FMViewMode;
 import com.fengmap.android.map.animator.FMLinearInterpolator;
+import com.fengmap.android.map.animator.FMValueAnimation;
 import com.fengmap.android.map.event.OnFMCompassListener;
 import com.fengmap.android.map.event.OnFMMapClickListener;
 import com.fengmap.android.map.event.OnFMMapInitListener;
@@ -76,8 +79,10 @@ import com.fengmap.android.map.marker.FMLocationMarker;
 import com.fengmap.android.map.marker.FMModel;
 import com.fengmap.android.map.marker.FMNode;
 import com.fengmap.android.map.marker.FMSegment;
+import com.fengmap.android.utils.FMMath;
 import com.fengmap.android.widget.FM3DControllerButton;
 import com.fengmap.android.widget.FMFloorControllerComponent;
+import com.fengmap.android.widget.FMSwitchFloorComponent;
 import com.fengmap.android.widget.FMZoomComponent;
 
 import java.io.FileNotFoundException;
@@ -93,11 +98,9 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-import static com.example.jin.hellofengmap.location.Location.groupId;
-import static com.example.jin.hellofengmap.location.Location.myLocation;
-
 public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,
-        OnFMCompassListener, OnFMSwitchGroupListener, OnFMMapClickListener, Runnable {
+        OnFMCompassListener, OnFMSwitchGroupListener, OnFMMapClickListener, Runnable,
+        FMLocationAPI.OnFMLocationListener{
 
     /**
      * 个人信息里面的图片，昵称，电话，性别
@@ -135,9 +138,14 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     private boolean isAnimateEnd = true;
     /**
+     * 楼层切换控件
+     */
+    private FMSwitchFloorComponent mSwitchFloorComponent;
+    /**
      * 地图缩放控制组件
      */
     private FMZoomComponent mZoomComponent;
+
     /**
      * 公共设施图层
      */
@@ -195,10 +203,6 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     protected FMNaviAnalyser mNaviAnalyser;
     /**
-     * 起点坐标
-     */
-    protected FMMapCoord stCoord;
-    /**
      * 起点楼层
      */
     protected int stGroupId;
@@ -207,10 +211,6 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     protected FMImageLayer stImageLayer;
     /**
-     * 终点坐标
-     */
-    protected FMMapCoord endCoord;
-    /**
      * 终点楼层id
      */
     protected int endGroupId;
@@ -218,6 +218,74 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 终点图层
      */
     protected FMImageLayer endImageLayer;
+
+    /**
+     * 定位切换楼层
+     */
+    protected static final int WHAT_LOCATE_SWITCH_GROUP = 4;
+    /**
+     * 两个点相差最大距离20米
+     */
+    protected static final double MAX_BETWEEN_LENGTH = 20;
+    /**
+     * 进入地图显示级别
+     */
+    protected static final int MAP_NORMAL_LEVEL = 20;
+    /**
+     * 默认起点
+     */
+    protected MapCoord stCoord = new MapCoord(1, new FMMapCoord(12961647.576796599, 4861814.63807118));
+    /**
+     * 默认终点
+     */
+    protected MapCoord endCoord = new MapCoord(6, new FMMapCoord(12961699.79823795, 4861826.46384646));
+    /**
+     * 导航行走点集合
+     */
+    protected ArrayList<ArrayList<FMMapCoord>> mNaviPoints = new ArrayList<>();
+    /**
+     * 导航行走的楼层集合
+     */
+    protected ArrayList<Integer> mNaviGroupIds = new ArrayList<>();
+    /**
+     * 导航行走索引
+     */
+    protected int mCurrentIndex = 0;
+    /**
+     * 差值动画
+     */
+    protected FMLocationAPI mLocationAPI;
+
+    private FMValueAnimation mMoveAnimation;
+
+    /**
+     * 行走显示详情
+     */
+    private static final int WHAT_WALKING_ROUTE_LINE = 3;
+    /**
+     * 约束过的定位标注
+     */
+    private FMLocationMarker mHandledMarker;
+    /**
+     * 上一次行走坐标
+     */
+    private FMMapCoord mLastMoveCoord;
+    /**
+     * 是否为第一人称
+     */
+    private boolean mIsFirstView = true;
+    /**
+     * 是否为跟随状态
+     */
+    private boolean mHasFollowed = true;
+    /**
+     * 总共距离
+     */
+    private double mTotalDistance;
+    /**
+     * 剩余距离
+     */
+    private volatile double mLeftDistance;
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override
@@ -412,6 +480,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             e.printStackTrace();
         }
 
+        //差值动画
+        mLocationAPI = new FMLocationAPI();
+        mLocationAPI.setFMLocationListener(this);
+
     }
 
     /**
@@ -543,7 +615,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
 
         //修改定位点标注
-        if (mGroupId != Location.groupId) {
+        if (mGroupId != Location.mapCoord.getGroupId()) {
             //切换到非定位楼层，清除定位标注
             clearLocationMarker();
         } else {
@@ -626,6 +698,14 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     @Override
     public void onBackPressed() {
+        //停止模拟轨迹动画
+        if (mLocationAPI != null) {
+            mLocationAPI.destroy();
+        }
+        //停止移动动画
+        if (mMoveAnimation != null) {
+            mMoveAnimation.stop();
+        }
         if (mFMMap != null) {
             mFMMap.onDestroy();
         }
@@ -799,19 +879,17 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * @param centerMapCoord
      */
     void goThere(FMMapCoord centerMapCoord) {
-        if (groupId == 0) {
+        if (Location.mapCoord.getGroupId() == 0) {
             //未进行定位
             Toast.makeText(MainActivity.this, "请先确定你的位置", Toast.LENGTH_SHORT).show();
             return;
         }
 
         //配置终点信息
-        Destination.myDestination = centerMapCoord;
-        Destination.groupId = mGroupId;
+        Destination.mapCoord =new MapCoord(mGroupId,centerMapCoord);
 
         //配置路线规划终点信息
-        endGroupId = Destination.groupId;
-        endCoord = Destination.myDestination;
+        endCoord = Destination.mapCoord;
 
         //清除所有的线与图层
         clear();
@@ -1011,6 +1089,12 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     //添加定位标记
                     locationMarker();
                     break;
+                case WHAT_WALKING_ROUTE_LINE:
+                    updateWalkRouteLine((FMMapCoord) msg.obj);
+                    break;
+                case WHAT_LOCATE_SWITCH_GROUP://4
+                    updateLocateGroupView();
+                    break;
                 default:
                     break;
             }
@@ -1032,20 +1116,21 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 //        Location.myLocation.x = 1.296164E7;
 //        Location.myLocation.y = 4861845.0;
 
-        if (groupId != 0 && myLocation.x != 0 && myLocation.y != 0) {
+        if (Location.mapCoord.getGroupId() != 0 && Location.mapCoord.getMapCoord().x != 0 &&
+                Location.mapCoord.getMapCoord().y != 0) {
 
-            Log.d(TAG, "locationMarker: " + groupId);
+            Log.d(TAG, "locationMarker: " + Location.mapCoord.getGroupId());
             //清空现有
             clear();
             //切换地图
-            switchFloor(groupId);
+            switchFloor(Location.mapCoord.getGroupId());
             //更新楼层控制组件
-            updateFloorButton(groupId);
+            updateFloorButton(Location.mapCoord.getGroupId());
             //刷新定位点
             updateLocationMarker();
 
-            stCoord = myLocation;
-            stGroupId = groupId;
+            stCoord = Location.mapCoord;
+            stGroupId = Location.mapCoord.getGroupId();
             createStartImageMarker();
         }
         return true;
@@ -1093,7 +1178,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             Log.d(TAG, "updateLocationMarker: add");
             int groupId = mFMMap.getFocusGroupId();
             Log.d(TAG, "updateLocationMarker: groupId=" + groupId);
-            mLocationMarker = new FMLocationMarker(groupId, myLocation);
+            mLocationMarker = new FMLocationMarker(groupId, Location.mapCoord.getMapCoord());
             //设置定位点图片
             mLocationMarker.setActiveImageFromAssets("active.png");
             //设置定位图片宽高
@@ -1104,7 +1189,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             //更新定位点位置和方向
             Log.d(TAG, "updateLocationMarker: update");
             float angle = 0;
-            mLocationMarker.updateAngleAndPosition(angle, myLocation);
+            mLocationMarker.updateAngleAndPosition(angle, Location.mapCoord.getMapCoord());
         }
     }
 
@@ -1125,14 +1210,173 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 开始分析导航
      */
     private void analyzeNavigation() {
-        int type = mNaviAnalyser.analyzeNavi(stGroupId, stCoord, endGroupId, endCoord,
-                FMNaviAnalyser.FMNaviModule.MODULE_SHORTEST);
+        int type = mNaviAnalyser.analyzeNavi(stGroupId, stCoord.getMapCoord(), endGroupId,
+                endCoord.getMapCoord(), FMNaviAnalyser.FMNaviModule.MODULE_SHORTEST);
         if (type == FMNaviAnalyser.FMRouteCalcuResult.ROUTE_SUCCESS) {
+            fillWithPoints();
             addLineMarker();
             //行走总距离
             double sceneRouteLength = mNaviAnalyser.getSceneRouteLength();
             setSceneRouteLength(sceneRouteLength);
         }
+    }
+
+    /**
+     * 开始点击导航
+     */
+    public void startWalkingRouteLine() {
+        //行走索引初始为0
+        mCurrentIndex = 0;
+        setStartAnimationEnable(false);
+
+        //缩放地图状态
+        setZoomLevel();
+        //开始进行模拟行走
+        int groupId = getWillWalkingGroupId();
+        setFocusGroupId(groupId);
+    }
+
+    /**
+     * 切换楼层行走
+     *
+     * @param groupId 楼层id
+     */
+    protected void setFocusGroupId(int groupId) {
+        if (groupId != mFMMap.getFocusGroupId()) {
+            mFMMap.setFocusByGroupId(groupId, null);
+            mHandler.sendEmptyMessage(WHAT_LOCATE_SWITCH_GROUP);
+        }
+
+        setupTargetLine(groupId);
+    }
+    /**
+     * 开始模拟行走路线
+     *
+     * @param groupId 楼层id
+     */
+    protected void setupTargetLine(int groupId) {
+        ArrayList<FMMapCoord> points = getWillWalkingPoints();
+        mLocationAPI.setupTargetLine(points, groupId);
+        mLocationAPI.start();
+    }
+    /**
+     * 动画旋转
+     */
+    protected void animateRotate(final float angle) {
+        if (Math.abs(mFMMap.getRotateAngle() - angle) > 2) {
+            mFMMap.setRotateAngle(angle);
+        }
+    }
+    /**
+     * 移动至中心点,如果中心与屏幕中心点距离大于20米，将移动
+     *
+     * @param mapCoord 坐标
+     */
+    protected void moveToCenter(final FMMapCoord mapCoord) {
+        FMMapCoord centerCoord = mFMMap.getMapCenter();
+        double length = FMMath.length(centerCoord, mapCoord);
+        if (length > MAX_BETWEEN_LENGTH) {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mFMMap.moveToCenter(mapCoord, true);
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onAnimationStart() {
+
+    }
+
+    @Override
+    public void onAnimationUpdate(FMMapCoord mapCoord, double distance, double angle) {
+
+    }
+
+    @Override
+    public void onAnimationEnd() {
+        // 已经行走过终点
+        if (isWalkComplete()) {
+            setStartAnimationEnable(true);
+            return;
+        }
+
+        int focusGroupId = getWillWalkingGroupId();
+        // 跳转至下一层
+        setFocusGroupId(focusGroupId);
+    }
+
+    /**
+     * 判断是否行走到终点
+     *
+     * @return
+     */
+    protected boolean isWalkComplete() {
+        if (mCurrentIndex > mNaviGroupIds.size() - 1) {
+            return true;
+        }
+        return false;
+    }
+    /**
+     * 设置动画按钮是否可以使用
+     *
+     * @param enable true 可以执行, false 不可以执行
+     */
+    protected void setStartAnimationEnable(final boolean enable) {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                //ViewHelper.setViewEnable(BaseActivity.this, R.id.btn_start_navigation, enable);
+            }
+        });
+    }
+    /**
+     * 设置缩放动画
+     *
+     * @return
+     */
+    protected void setZoomLevel() {
+        if (mFMMap.getZoomLevel() != MAP_NORMAL_LEVEL) {
+            mFMMap.setZoomLevel(MAP_NORMAL_LEVEL, true);
+        }
+    }
+    /**
+     * 填充导航线段点
+     */
+    protected void fillWithPoints() {
+        clearWalkPoints();
+
+        //获取路径规划上点集合数据
+        ArrayList<FMNaviResult> results = mNaviAnalyser.getNaviResults();
+        int focusGroupId = Integer.MIN_VALUE;
+        for (FMNaviResult r : results) {
+            int groupId = r.getGroupId();
+            ArrayList<FMMapCoord> points = r.getPointList();
+            //点数据小于2，则为单个数据集合
+            if (points.size() < 2) {
+                continue;
+            }
+            //判断是否为同层导航数据，非同层数据即其他层数据
+            if (focusGroupId == Integer.MIN_VALUE || focusGroupId != groupId) {
+                focusGroupId = groupId;
+                //添加即将行走的楼层与点集合
+                mNaviGroupIds.add(groupId);
+                mNaviPoints.add(points);
+            } else {
+                mNaviPoints.get(mNaviPoints.size() - 1).addAll(points);
+            }
+        }
+    }
+
+    /**
+     * 清空行走的点集合数据
+     */
+    private void clearWalkPoints() {
+        mCurrentIndex = 0;
+        mNaviPoints.clear();
+        mNaviGroupIds.clear();
     }
 
     /**
@@ -1166,6 +1410,40 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         //显示sanckbar
         snackbar.show();
+    }
+
+    /**
+     * 获取即将行走的下一层groupId
+     *
+     * @return
+     */
+    protected int getWillWalkingGroupId() {
+        if (mCurrentIndex > mNaviGroupIds.size() - 1) {
+            return mFMMap.getFocusGroupId();
+        } else {
+            return mNaviGroupIds.get(mCurrentIndex);
+        }
+    }
+
+    /**
+     * 获取即将行走的下一层点集合
+     *
+     * @return
+     */
+    protected ArrayList<FMMapCoord> getWillWalkingPoints() {
+        if (mCurrentIndex > mNaviGroupIds.size() - 1) {
+            return null;
+        }
+        return mNaviPoints.get(mCurrentIndex++);
+    }
+
+    /**
+     * 切换楼层显示
+     */
+    public void updateLocateGroupView() {
+        int groupSize = mFMMap.getFMMapInfo().getGroupSize();
+        int position = groupSize - mFMMap.getFocusGroupId();
+        mSwitchFloorComponent.setSelected(position);
     }
 
     /**
@@ -1251,7 +1529,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mFMMap.addLayer(endImageLayer);
         mImageLayer.removeAll();
         // 标注物样式
-        FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), endCoord, R.drawable.end);
+        FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), endCoord.getMapCoord(), R.drawable.end);
         endImageLayer.addMarker(imageMarker);
     }
 
@@ -1419,6 +1697,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         String y = "0";
         try {
             if (message != null) {
+                //解析出有效信息
                 int maohao = message.indexOf(':');
                 int xiegang = message.indexOf('/');
 
@@ -1436,11 +1715,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 return false;
             }
 
-            Location.groupId = Integer.valueOf(floor);
-            Location.myLocation.x = Double.valueOf(x);
-            Location.myLocation.y = Double.valueOf(y);
+            Location.mapCoord.setGroupId(Integer.valueOf(floor));
+            Location.mapCoord.setMapCoord(new FMMapCoord(Double.valueOf(x),Double.valueOf(y)));
 
-            Log.d(TAG, "dealWithResponse: groupId:" + Location.groupId);
+            Log.d(TAG, "dealWithResponse: groupId:" + Location.mapCoord.getGroupId());
             Log.d(TAG, "dealWithResponse: x:" + x);
             Log.d(TAG, "dealWithResponse: y:" + y);
 
