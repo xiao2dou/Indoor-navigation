@@ -7,12 +7,7 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
-import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,8 +16,6 @@ import android.support.annotation.RequiresApi;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -31,10 +24,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
-import android.graphics.Bitmap;
 
 import com.example.jin.hellofengmap.location.Destination;
 import com.example.jin.hellofengmap.location.FitRssi;
@@ -47,6 +37,7 @@ import com.example.jin.hellofengmap.utils.ConvertUtils;
 import com.example.jin.hellofengmap.utils.FMLocationAPI;
 import com.example.jin.hellofengmap.utils.SnackbarUtil;
 import com.example.jin.hellofengmap.utils.ViewHelper;
+import com.example.jin.hellofengmap.widget.ImageViewCheckBox;
 import com.fengmap.android.FMDevice;
 import com.fengmap.android.FMErrorMsg;
 import com.fengmap.android.FMMapSDK;
@@ -203,17 +194,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     protected FMNaviAnalyser mNaviAnalyser;
     /**
-     * 起点楼层
-     */
-    protected int stGroupId;
-    /**
      * 起点图层
      */
     protected FMImageLayer stImageLayer;
-    /**
-     * 终点楼层id
-     */
-    protected int endGroupId;
     /**
      * 终点图层
      */
@@ -447,6 +430,11 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             initZoomComponent();
         }
 
+        if (mSwitchFloorComponent == null) {
+            //initSwitchFloorComponent();
+            initFloorControllerComponent();
+        }
+
         int groupId = mFMMap.getFocusGroupId();
 
         //公共设施图层
@@ -484,6 +472,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mLocationAPI = new FMLocationAPI();
         mLocationAPI.setFMLocationListener(this);
 
+//        //路径规划
+//        analyzeNavigation(stCoord, endCoord);
+//        mTotalDistance = mNaviAnalyser.getSceneRouteLength();
     }
 
     /**
@@ -664,6 +655,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     @Override
     public void afterGroupChanged() {
         isAnimateEnd = true;
+        mHandler.sendEmptyMessage(WHAT_LOCATE_SWITCH_GROUP);
     }
 
     /**
@@ -698,6 +690,13 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     @Override
     public void onBackPressed() {
+
+        if (mLocationAPI != null) {
+            mLocationAPI.destroy();
+        }
+        mHandler.removeMessages(WHAT_LOCATE_SWITCH_GROUP);
+        mHandler.removeMessages(WHAT_WALKING_ROUTE_LINE);
+
         //停止模拟轨迹动画
         if (mLocationAPI != null) {
             mLocationAPI.destroy();
@@ -903,6 +902,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //开始分析导航
         analyzeNavigation();
 
+        Log.d("gohere", "goThere: "+Destination.mapCoord.getGroupId());
+
         // 画完置空
         stCoord = null;
         endCoord = null;
@@ -1089,7 +1090,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     //添加定位标记
                     locationMarker();
                     break;
-                case WHAT_WALKING_ROUTE_LINE:
+                case WHAT_WALKING_ROUTE_LINE://3
                     updateWalkRouteLine((FMMapCoord) msg.obj);
                     break;
                 case WHAT_LOCATE_SWITCH_GROUP://4
@@ -1130,7 +1131,6 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             updateLocationMarker();
 
             stCoord = Location.mapCoord;
-            stGroupId = Location.mapCoord.getGroupId();
             createStartImageMarker();
         }
         return true;
@@ -1210,11 +1210,17 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 开始分析导航
      */
     private void analyzeNavigation() {
-        int type = mNaviAnalyser.analyzeNavi(stGroupId, stCoord.getMapCoord(), endGroupId,
-                endCoord.getMapCoord(), FMNaviAnalyser.FMNaviModule.MODULE_SHORTEST);
+
+        int type = mNaviAnalyser.analyzeNavi(stCoord.getGroupId(), stCoord.getMapCoord(),
+                endCoord.getGroupId(), endCoord.getMapCoord(),
+                FMNaviAnalyser.FMNaviModule.MODULE_SHORTEST);
+
         if (type == FMNaviAnalyser.FMRouteCalcuResult.ROUTE_SUCCESS) {
-            fillWithPoints();
+
             addLineMarker();
+
+            fillWithPoints();
+
             //行走总距离
             double sceneRouteLength = mNaviAnalyser.getSceneRouteLength();
             setSceneRouteLength(sceneRouteLength);
@@ -1225,6 +1231,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 开始点击导航
      */
     public void startWalkingRouteLine() {
+
+        mLeftDistance = mTotalDistance;
+
         //行走索引初始为0
         mCurrentIndex = 0;
         setStartAnimationEnable(false);
@@ -1292,7 +1301,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
     @Override
     public void onAnimationUpdate(FMMapCoord mapCoord, double distance, double angle) {
-
+        updateHandledMarker(mapCoord, angle);
+        scheduleCalcWalkingRouteLine(mapCoord, distance);
     }
 
     @Override
@@ -1303,8 +1313,21 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             return;
         }
 
+        if (isWalkComplete()) {
+            setStartAnimationEnable(true);
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    //String info = getResources().getString(R.string.label_walk_format, 0f,
+                     //       0, "到达目的地");
+                    //ViewHelper.setViewText(FMNavigationApplication.this, R.id.txt_info, info);
+                }
+            });
+            return;
+        }
+
         int focusGroupId = getWillWalkingGroupId();
-        // 跳转至下一层
+        //跳转至下一层
         setFocusGroupId(focusGroupId);
     }
 
@@ -1405,6 +1428,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             @Override
             public void onClick(View view) {
                 Toast.makeText(MainActivity.this, "开始导航", Toast.LENGTH_SHORT).show();
+                startWalkingRouteLine();
             }
         });
 
@@ -1445,6 +1469,131 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         int position = groupSize - mFMMap.getFocusGroupId();
         mSwitchFloorComponent.setSelected(position);
     }
+
+    /**
+     * 更新约束定位点
+     *
+     * @param coord 坐标
+     */
+    private void updateHandledMarker(FMMapCoord coord, double angle) {
+//        if (mHandledMarker == null) {
+//            mHandledMarker = ViewHelper.buildLocationMarker(stCoord.getGroupId(),
+//                    coord);
+//            mLocationLayer.addMarker(mHandledMarker);
+//        } else {
+//            FMMapCoord mapCoord = makeConstraint(coord);
+//            if (mIsFirstView && angle != 0) {
+//                animateRotate((float) -angle);
+//            }
+//            mHandledMarker.updateAngleAndPosition((float) angle, mapCoord);
+//        }
+
+        //判断当前定位标注是否显示
+        //isLocationMarker(mFMMap.getFocusGroupId());
+
+        //跟随效果
+        mLastMoveCoord = coord.clone();
+        checkLocationFollowState();
+
+        checkLocationIsCenter();
+    }
+
+    private void isLocationMarker(int groupId){
+//        boolean visible = mLocationAPI.getGroupId() == groupId;
+//        mHandledMarker.setVisible(visible);
+    }
+    /**
+     * 判断定位点是否应该处于屏幕中央
+     */
+    private void checkLocationIsCenter() {
+        if (mHasFollowed || mIsFirstView) {
+            //切换楼层
+            int groupId = mLocationAPI.getGroupId();
+            if (mFMMap.getFocusGroupId() != groupId) {
+                mFMMap.setFocusByGroupId(groupId, this);
+            }
+        }
+    }
+
+    /**
+     * 判断定位点是否为跟随状态
+     */
+    private void checkLocationFollowState() {
+        if (mHasFollowed) {
+            moveToCenter(mLastMoveCoord);
+        }
+    }
+
+    /**
+     * 路径约束
+     *
+     * @param mapCoord 地图坐标点
+     * @return
+     */
+    private FMMapCoord makeConstraint(FMMapCoord mapCoord) {
+        FMMapCoord currentCoord = mapCoord.clone();
+        int groupId = mLocationAPI.getGroupId();
+        //获取当层绘制路径线点集合
+        ArrayList<FMMapCoord> coords = mLocationAPI.getSimulateCoords();
+        //路径约束
+        mNaviAnalyser.naviConstraint(groupId, coords, mLastMoveCoord, currentCoord);
+        return currentCoord;
+    }
+
+//    /**
+//     * 设置是否为第一人称
+//     *
+//     * @param enable true 第一人称
+//     *               false 第三人称
+//     */
+//    private void setViewState(boolean enable) {
+//        this.mIsFirstView = !enable;
+//        setFloorControlEnable();
+//    }
+
+//    /**
+//     * 设置跟随状态
+//     *
+//     * @param enable true 跟随
+//     *               false 不跟随
+//     */
+//    private void setFollowState(boolean enable) {
+//        mHasFollowed = enable;
+//        setFloorControlEnable();
+//    }
+    /**
+     * 计算行走距离
+     *
+     * @param mapCoord 定位点
+     * @param distance 已行走距离
+     */
+    private void scheduleCalcWalkingRouteLine(FMMapCoord mapCoord, double distance) {
+        mLeftDistance -= distance;
+        if (mLeftDistance <= 0) {
+            mLeftDistance = 0;
+        }
+
+        Message message = Message.obtain();
+        message.what = WHAT_WALKING_ROUTE_LINE;
+        message.obj = mapCoord;
+        mHandler.sendMessage(message);
+    }
+
+    /**
+     * 更新行走距离和文字导航
+     *
+     * @param mapCoord 定位点坐标
+     */
+    private void updateWalkRouteLine(FMMapCoord mapCoord) {
+        int timeByWalk = ConvertUtils.getTimeByWalk(mLeftDistance);
+//        String description = ConvertUtils.getDescription(mNaviAnalyser.getNaviDescriptionData(),
+//                mapCoord.clone(), mLocationAPI.getGroupId());
+//        String info = getResources().getString(R.string.label_walk_format, mLeftDistance,
+//                timeByWalk, description);
+//        ViewHelper.setViewText(FMNavigationApplication.this, R.id.txt_info, info);
+    }
+
+
 
     /**
      * 清理所有的线与图层
@@ -1512,7 +1661,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     protected void createStartImageMarker() {
         clearStartImageLayer();
         // 添加起点图层
-        stImageLayer = new FMImageLayer(mFMMap, stGroupId);
+        stImageLayer = new FMImageLayer(mFMMap, stCoord.getGroupId());
         mFMMap.addLayer(stImageLayer);
 //        // 标注物样式
 //        FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), stCoord, R.drawable.start);
@@ -1525,7 +1674,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     protected void createEndImageMarker() {
         clearEndImageLayer();
         // 添加起点图层
-        endImageLayer = new FMImageLayer(mFMMap, endGroupId);
+        endImageLayer = new FMImageLayer(mFMMap, endCoord.getGroupId());
         mFMMap.addLayer(endImageLayer);
         mImageLayer.removeAll();
         // 标注物样式
@@ -1624,7 +1773,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 //    protected static final String IP = "192.168.1.109";
 //    protected static final String URL = "http://" + IP + ":80/locate";
 
-    protected static final String IP = "192.168.1.104";
+    protected static final String IP = "192.168.1.115";
     protected static final String URL = "http://" + IP + ":80/locate";
 
     public void SendDatebase(final Context contextMain, final List<iBeacon> iBeaconList) {
