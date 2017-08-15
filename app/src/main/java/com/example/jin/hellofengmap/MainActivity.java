@@ -1480,6 +1480,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 //            mHandledMarker = ViewHelper.buildLocationMarker(stCoord.getGroupId(),
 //                    coord);
 //            mLocationLayer.addMarker(mHandledMarker);
+
 //        } else {
 //            FMMapCoord mapCoord = makeConstraint(coord);
 //            if (mIsFirstView && angle != 0) {
@@ -1540,16 +1541,16 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         return currentCoord;
     }
 
-//    /**
-//     * 设置是否为第一人称
-//     *
-//     * @param enable true 第一人称
-//     *               false 第三人称
-//     */
-//    private void setViewState(boolean enable) {
-//        this.mIsFirstView = !enable;
-//        setFloorControlEnable();
-//    }
+    /**
+     * 设置是否为第一人称
+     *
+     * @param enable true 第一人称
+     *               false 第三人称
+     */
+    private void setViewState(boolean enable) {
+        this.mIsFirstView = !enable;
+        //setFloorControlEnable();
+    }
 
 //    /**
 //     * 设置跟随状态
