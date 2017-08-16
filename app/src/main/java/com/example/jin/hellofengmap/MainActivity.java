@@ -474,8 +474,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         //路径规划
         //analyzeNavigation(stCoord, endCoord);
-        analyzeNavigation();
-        mTotalDistance = mNaviAnalyser.getSceneRouteLength();
+//        analyzeNavigation();
+//        mTotalDistance = mNaviAnalyser.getSceneRouteLength();
     }
 
     /**
@@ -900,8 +900,12 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //添加终点标记
         createEndImageMarker();
 
+        //添加起点标记
+        createStartImageMarker();
+
         //开始分析导航
         analyzeNavigation();
+        mTotalDistance = mNaviAnalyser.getSceneRouteLength();
 
         Log.d("gohere", "goThere: "+Destination.mapCoord.getGroupId());
 
@@ -987,7 +991,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     }
 
     /**
-     * 开始导航
+     * 开始导航扫描
      */
     public void beginScanNavigate() {
         scanLeDevice(true, 0);
@@ -1132,7 +1136,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             updateLocationMarker();
 
             stCoord = Location.mapCoord;
-            createStartImageMarker();
+            //createStartImageMarker();
         }
         return true;
     }
@@ -1173,8 +1177,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     private void updateLocationMarker() {
 
-        boolean visible = mLocationAPI.getGroupId() == mGroupId;
-        mHandledMarker.setVisible(visible);
+//        boolean visible = mLocationAPI.getGroupId() == mGroupId;
+//        mHandledMarker.setVisible(visible);
 
         //FMMapCoord CENTER_COORD = new FMMapCoord(1.296164E7, 4861845.0);
         String TAG = "定位点";
@@ -1237,7 +1241,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     public void startWalkingRouteLine() {
 
-        mLeftDistance = mTotalDistance;
+        //mLeftDistance = mTotalDistance;
 
         //行走索引初始为0
         mCurrentIndex = 0;
@@ -1435,6 +1439,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             public void onClick(View view) {
                 Toast.makeText(MainActivity.this, "开始导航", Toast.LENGTH_SHORT).show();
                 startWalkingRouteLine();
+                clearLocationMarker();
+                //createStartImageMarker();
             }
         });
 
@@ -1477,37 +1483,35 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     }
 
     /**
-     * 更新约束定位点
+     * 更新处理过定位点
      *
      * @param coord 坐标
+     * @param angle 角度
      */
     private void updateHandledMarker(FMMapCoord coord, double angle) {
         if (mHandledMarker == null) {
-            mHandledMarker = ViewHelper.buildLocationMarker(stCoord.getGroupId(),
+            mHandledMarker = ViewHelper.buildLocationMarker(mFMMap.getFocusGroupId(),
                     coord);
             mLocationLayer.addMarker(mHandledMarker);
-
         } else {
             FMMapCoord mapCoord = makeConstraint(coord);
-            if (mIsFirstView && angle != 0) {
+            mHandledMarker.updateAngleAndPosition((float) angle, mapCoord);
+
+            if (angle != 0) {
                 animateRotate((float) -angle);
             }
-            mHandledMarker.updateAngleAndPosition((float) angle, mapCoord);
         }
 
-        //判断当前定位标注是否显示
-        isLocationMarker(mFMMap.getFocusGroupId());
+        //updateLocationMarker();
 
-        //跟随效果
+        //上次真实行走坐标
         mLastMoveCoord = coord.clone();
-        checkLocationFollowState();
-
-        checkLocationIsCenter();
+        moveToCenter(mLastMoveCoord);
     }
 
     private void isLocationMarker(int groupId){
-//        boolean visible = mLocationAPI.getGroupId() == groupId;
-//        mHandledMarker.setVisible(visible);
+        boolean visible = mLocationAPI.getGroupId() == groupId;
+        mHandledMarker.setVisible(visible);
     }
     /**
      * 判断定位点是否应该处于屏幕中央
@@ -1696,16 +1700,21 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     }
 
     /**
-     * 创建起点图标
+     * 创建起点
      */
     protected void createStartImageMarker() {
         clearStartImageLayer();
         // 添加起点图层
         stImageLayer = new FMImageLayer(mFMMap, stCoord.getGroupId());
         mFMMap.addLayer(stImageLayer);
-//        // 标注物样式
-//        FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), stCoord, R.drawable.start);
-//        stImageLayer.addMarker(imageMarker);
+        // 标注物样式
+        FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), stCoord.getMapCoord(), R.drawable.start);
+        stImageLayer.addMarker(imageMarker);
+    }
+
+    protected void addStartImageMaeker(){
+        FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), stCoord.getMapCoord(), R.drawable.start);
+        stImageLayer.addMarker(imageMarker);
     }
 
     /**
@@ -1771,7 +1780,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 //首次在该位置接收到某iBeacon信号
                 count++;
                 iBeaconMacList.add(item.getBluetoothAddress());
-                iBeaconsList.add(new iBeacons(item));
+                iBeacons miBeacons=new iBeacons(item);
+                miBeacons.rssiList.add(String.valueOf(item.getRssi()));
+                iBeaconsList.add(miBeacons);
             } else {//非首次在该位置接收到某iBeacon信号
                 //遍历iBeacons类的List
                 for (int i = 0; i < iBeaconsList.size(); i++) {
