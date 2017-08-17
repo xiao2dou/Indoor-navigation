@@ -16,26 +16,45 @@
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
 
-        <android.support.design.widget.CoordinatorLayout
-            android:id="@+id/coordinatorLayout"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-                <com.fengmap.android.map.FMMapView
-                    android:id="@+id/mapview"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+                <android.support.design.widget.CoordinatorLayout
+                    android:id="@+id/coordinatorLayout"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
+                    android:layout_height="match_parent"
+                    android:layout_weight="10">
 
-                <android.support.design.widget.FloatingActionButton
-                    android:id="@+id/btn_my_location"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|left"
-                    android:layout_margin="16dp"
-                    app:fabSize="mini"
-                    android:src="@drawable/ic_my_location"/>
+                        <com.fengmap.android.map.FMMapView
+                            android:id="@+id/mapview"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"/>
 
-        </android.support.design.widget.CoordinatorLayout>
+                        <android.support.design.widget.FloatingActionButton
+                            android:id="@+id/btn_my_location"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|left"
+                            android:layout_margin="16dp"
+                            app:fabSize="mini"
+                            android:src="@drawable/ic_my_location"/>
+
+                </android.support.design.widget.CoordinatorLayout>
+
+                <TextView
+                    android:id="@+id/txt_bottom_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_alignParentBottom="true"
+                    android:background="@color/colorPrimary"
+                    android:gravity="center"
+                    android:text="test"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"/>
+        </LinearLayout>
+
 
 </LinearLayout>
 

@@ -24,6 +24,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.jin.hellofengmap.location.Destination;
@@ -113,6 +114,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     FloatingActionButton btnMyLocation;
     /**
+     * 底部信息栏
+     */
+    TextView textViewBottomMessage;
+    /**
      * 定时扫描控制
      */
     Handler mHandler = new Handler();
@@ -193,6 +198,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 导航分析
      */
     protected FMNaviAnalyser mNaviAnalyser;
+    /**
+     * 路线提示信息
+     */
+    protected String message="";
     /**
      * 起点图层
      */
@@ -341,8 +350,14 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 Location.isProblem = false;
                 // 打开扫描器
                 beginScanLocation();
+                message="正在定位";
+                textViewBottomMessage.setText(message);
             }
         });
+
+        textViewBottomMessage=(TextView)findViewById(R.id.txt_bottom_message);
+        message="等待定位";
+        textViewBottomMessage.setText(message);
 
         // 加载地图数据
         openMapByPath();
@@ -656,7 +671,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     @Override
     public void afterGroupChanged() {
         isAnimateEnd = true;
-        mHandler.sendEmptyMessage(WHAT_LOCATE_SWITCH_GROUP);
+        handler.sendEmptyMessage(WHAT_LOCATE_SWITCH_GROUP);
     }
 
     /**
@@ -695,8 +710,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         if (mLocationAPI != null) {
             mLocationAPI.destroy();
         }
-        mHandler.removeMessages(WHAT_LOCATE_SWITCH_GROUP);
-        mHandler.removeMessages(WHAT_WALKING_ROUTE_LINE);
+        handler.removeMessages(WHAT_LOCATE_SWITCH_GROUP);
+        handler.removeMessages(WHAT_WALKING_ROUTE_LINE);
 
         //停止模拟轨迹动画
         if (mLocationAPI != null) {
@@ -1091,7 +1106,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     //发送完数据后清空List
                     mIBeaconList.clear();
                     break;
-                case 2:
+                case 2://定位成功
+                    message="定位成功";
+                    textViewBottomMessage.setText(message);
                     //添加定位标记
                     locationMarker();
                     break;
@@ -1100,6 +1117,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     break;
                 case WHAT_LOCATE_SWITCH_GROUP://4
                     updateLocateGroupView();
+                    break;
+                case 5://定位失败
+                    textViewBottomMessage.setText("定位失败，请重试");
                     break;
                 default:
                     break;
@@ -1241,7 +1261,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     public void startWalkingRouteLine() {
 
-        //mLeftDistance = mTotalDistance;
+        mLeftDistance = mTotalDistance;
 
         //行走索引初始为0
         mCurrentIndex = 0;
@@ -1252,6 +1272,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //开始进行模拟行走
         int groupId = getWillWalkingGroupId();
         setFocusGroupId(groupId);
+
     }
 
     /**
@@ -1262,7 +1283,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     protected void setFocusGroupId(int groupId) {
         if (groupId != mFMMap.getFocusGroupId()) {
             mFMMap.setFocusByGroupId(groupId, null);
-            mHandler.sendEmptyMessage(WHAT_LOCATE_SWITCH_GROUP);
+            handler.sendEmptyMessage(WHAT_LOCATE_SWITCH_GROUP);
         }
 
         setupTargetLine(groupId);
@@ -1294,7 +1315,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         FMMapCoord centerCoord = mFMMap.getMapCenter();
         double length = FMMath.length(centerCoord, mapCoord);
         if (length > MAX_BETWEEN_LENGTH) {
-            mHandler.post(new Runnable() {
+            handler.post(new Runnable() {
                 @Override
                 public void run() {
                     mFMMap.moveToCenter(mapCoord, true);
@@ -1316,20 +1337,22 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
     @Override
     public void onAnimationEnd() {
-        // 已经行走过终点
-        if (isWalkComplete()) {
-            setStartAnimationEnable(true);
-            return;
-        }
+//        // 已经行走过终点
+//        if (isWalkComplete()) {
+//            setStartAnimationEnable(true);
+//            return;
+//        }
 
         if (isWalkComplete()) {
             setStartAnimationEnable(true);
-            mHandler.post(new Runnable() {
+            handler.post(new Runnable() {
                 @Override
                 public void run() {
                     String info = getResources().getString(R.string.label_walk_format, 0f,
                             0, "到达目的地");
-                    Log.d("Message", "info: "+info);
+                    Toast.makeText(MainActivity.this,"到达目的地",Toast.LENGTH_SHORT).show();
+                    textViewBottomMessage.setText("到达目的地");
+                    //Log.d("Message", "info: "+"到达目的地");
                     //ViewHelper.setViewText(FMNavigationApplication.this, R.id.txt_info, info);
                 }
             });
@@ -1358,7 +1381,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * @param enable true 可以执行, false 不可以执行
      */
     protected void setStartAnimationEnable(final boolean enable) {
-        mHandler.post(new Runnable() {
+        handler.post(new Runnable() {
             @Override
             public void run() {
                 //ViewHelper.setViewEnable(BaseActivity.this, R.id.btn_start_navigation, enable);
@@ -1419,8 +1442,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     private void setSceneRouteLength(double sceneRouteLength) {
         int time = ConvertUtils.getTimeByWalk(sceneRouteLength);
-        String text = "距离：" + (int) sceneRouteLength + "米\n" + "大约需要" + time + "分钟";
+        String loadMessage = "距离：" + (int) sceneRouteLength + "米  " + "大约需要" + time + "分钟";
+        textViewBottomMessage.setText(loadMessage);
 
+        String text="前往："+Destination.name;
 //        TextView textView = ViewHelper.getView(FMNavigationDistance.this, R.id.txt_info);
 //        textView.setText(text);
 
@@ -1430,7 +1455,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         SnackbarUtil.setBackgroundColor(snackbar, SnackbarUtil.blue);
         SnackbarUtil.SnackbarAddView(snackbar, R.layout.snackbar, 0);
         View view = snackbar.getView();
-        Button go_there = (Button) view.findViewById(R.id.go);
+        final Button go_there = (Button) view.findViewById(R.id.go);
         go_there.setText("开始导航");
 
         //"开始导航"按钮的点击事件
@@ -1440,7 +1465,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 Toast.makeText(MainActivity.this, "开始导航", Toast.LENGTH_SHORT).show();
                 startWalkingRouteLine();
                 clearLocationMarker();
-                //createStartImageMarker();
+                snackbar.dismiss();
             }
         });
 
@@ -1479,7 +1504,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     public void updateLocateGroupView() {
         int groupSize = mFMMap.getFMMapInfo().getGroupSize();
         int position = groupSize - mFMMap.getFocusGroupId();
-        mSwitchFloorComponent.setSelected(position);
+        //mSwitchFloorComponent.setSelected(position);
     }
 
     /**
@@ -1609,7 +1634,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         Message message = Message.obtain();
         message.what = WHAT_WALKING_ROUTE_LINE;
         message.obj = mapCoord;
-        mHandler.sendMessage(message);
+        handler.sendMessage(message);
     }
 
     /**
@@ -1623,7 +1648,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 mapCoord.clone(), mLocationAPI.getGroupId());
         String info = getResources().getString(R.string.label_walk_format, mLeftDistance,
                 timeByWalk, description);
-        Log.d("Message", "info: "+info);
+        //Log.d("Message", "info: "+info);
+        textViewBottomMessage.setText(info);
 //        ViewHelper.setViewText(FMNavigationApplication.this, R.id.txt_info, info);
 
 //        if(descriptionChanged(description)&&!mKqwSpeechCompound.isSpeaking()){
@@ -1643,6 +1669,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 清理所有的线与图层
      */
     protected void clear() {
+        clearLocationMarker();
         clearLineLayer();
         clearStartImageLayer();
         clearEndImageLayer();
@@ -1857,15 +1884,18 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                             Toast.makeText(contextMain, "定位成功", Toast.LENGTH_SHORT).show();
                             handler.sendEmptyMessage(2);
                         } else {
+                            handler.sendEmptyMessage(5);
                             Toast.makeText(contextMain, "您当前环境暂不支持定位", Toast.LENGTH_SHORT).show();
                         }
                     } else {
                         Toast.makeText(contextMain, "上传失败，数据格式错误", Toast.LENGTH_LONG).show();
+                        handler.sendEmptyMessage(5);
                         Location.isProblem = true;
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                     Toast.makeText(contextMain, "无法连接到服务器，请检查网络设置", Toast.LENGTH_LONG).show();
+                    handler.sendEmptyMessage(5);
                     Location.isProblem = true;
                     //Log.d("SendDatabase Fail ", e.getMessage());
                 }
