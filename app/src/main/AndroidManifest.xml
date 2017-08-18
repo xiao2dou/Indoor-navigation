@@ -22,7 +22,7 @@
         android:theme="@style/AppTheme">
         <meta-data
             android:name="com.fengmap.mapapi.appkey"
-            android:value="a35b8943d8e251aca39c58338ae00360"/>
+            android:value="0380125c5950c70580be801e0dd9a9fc"/>
 
         <activity android:name=".MainActivity">
             <intent-filter>

@@ -438,7 +438,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mapView = (FMMapView) findViewById(R.id.mapview);
         mFMMap = mapView.getFMMap();//获取地图操作对象
 
-        String bid = "10347";//地图id
+        //String bid = "10347";//地图id
+        String bid = "cs201707191652";//地图id
         //监听地图的加载状况
         mFMMap.setOnFMMapInitListener(this);
 
@@ -1854,7 +1855,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //处理后的iBeacon信息，一个iBeacon对应一条数据
         List<iBeacon> answerIBeaconList = new ArrayList<>();
 
-        if(mIBeaconList.size()==0){
+        if (mIBeaconList.size() == 0) {
             handler.sendEmptyMessage(5);
             Toast.makeText(MainActivity.this, "您当前环境暂不支持定位", Toast.LENGTH_SHORT).show();
             Location.isProblem = true;
