@@ -39,6 +39,7 @@ import com.example.jin.hellofengmap.utils.ConvertUtils;
 import com.example.jin.hellofengmap.utils.FMLocationAPI;
 import com.example.jin.hellofengmap.utils.SnackbarUtil;
 import com.example.jin.hellofengmap.utils.ViewHelper;
+import com.example.jin.hellofengmap.voice.KqwSpeechCompound;
 import com.example.jin.hellofengmap.widget.ImageViewCheckBox;
 import com.fengmap.android.FMDevice;
 import com.fengmap.android.FMErrorMsg;
@@ -77,6 +78,8 @@ import com.fengmap.android.widget.FM3DControllerButton;
 import com.fengmap.android.widget.FMFloorControllerComponent;
 import com.fengmap.android.widget.FMSwitchFloorComponent;
 import com.fengmap.android.widget.FMZoomComponent;
+import com.iflytek.cloud.SpeechConstant;
+import com.iflytek.cloud.SpeechUtility;
 
 import java.io.FileNotFoundException;
 import java.lang.reflect.Method;
@@ -93,7 +96,7 @@ import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity implements OnFMMapInitListener,
         OnFMCompassListener, OnFMSwitchGroupListener, OnFMMapClickListener, Runnable,
-        FMLocationAPI.OnFMLocationListener{
+        FMLocationAPI.OnFMLocationListener {
 
     /**
      * 个人信息里面的图片，昵称，电话，性别
@@ -202,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     /**
      * 路线提示信息
      */
-    protected String message="";
+    protected String message = "";
     /**
      * 起点图层
      */
@@ -279,10 +282,35 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 剩余距离
      */
     private volatile double mLeftDistance;
+    /**
+     * 语音对象
+     */
+    private KqwSpeechCompound mKqwSpeechCompound;
+    /**
+     * 语音辅助字符串
+     */
+    private String sdescriptionChange = "";
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        //Toast.makeText(this, "InitApplication", Toast.LENGTH_LONG).show();
+        // 应用程序入口处调用,避免手机内存过小,杀死后台进程后通过历史intent进入Activity造成SpeechUtility对象为null
+        // 如在Application中调用初始化，需要在Mainifest中注册该Applicaiton
+        // 注意：此接口在非主进程调用会返回null对象，如需在非主进程使用语音功能，请增加参数：SpeechConstant.FORCE_LOGIN+"=true"
+        // 参数间使用“,”分隔。
+        // 设置你申请的应用appid
+        StringBuffer param = new StringBuffer();
+        param.append("appid=598faed5");
+        param.append(",");
+        param.append(SpeechConstant.ENGINE_MODE + "=" + SpeechConstant.MODE_MSC);
+        // param.append(",");
+        // param.append(SpeechConstant.FORCE_LOGIN + "=true");
+        SpeechUtility.createUtility(MainActivity.this, param.toString());
+
+        // 初始化语音合成对象
+        mKqwSpeechCompound = new KqwSpeechCompound(this);
 
         //动态权限申请
         if (Build.VERSION.SDK_INT < 23) {
@@ -351,13 +379,13 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 Location.isProblem = false;
                 // 打开扫描器
                 beginScanLocation();
-                message="正在定位";
+                message = "正在定位";
                 textViewBottomMessage.setText(message);
             }
         });
 
-        textViewBottomMessage=(TextView)findViewById(R.id.txt_bottom_message);
-        message="等待定位";
+        textViewBottomMessage = (TextView) findViewById(R.id.txt_bottom_message);
+        message = "等待定位";
         textViewBottomMessage.setText(message);
 
         // 加载地图数据
@@ -397,8 +425,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
     }
 
-    public boolean onCreateOptionsMenu(Menu menu){
-        getMenuInflater().inflate(R.menu.toolbar,menu);
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.toolbar, menu);
         return true;
     }
 
@@ -898,6 +926,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
     /**
      * 去这里事件
+     *
      * @param centerMapCoord
      */
     void goThere(FMMapCoord centerMapCoord) {
@@ -908,7 +937,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
 
         //配置终点信息
-        Destination.mapCoord =new MapCoord(mGroupId,centerMapCoord);
+        Destination.mapCoord = new MapCoord(mGroupId, centerMapCoord);
 
         //配置路线规划终点信息
         endCoord = Destination.mapCoord;
@@ -929,7 +958,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         analyzeNavigation();
         mTotalDistance = mNaviAnalyser.getSceneRouteLength();
 
-        Log.d("gohere", "goThere: "+Destination.mapCoord.getGroupId());
+        Log.d("gohere", "goThere: " + Destination.mapCoord.getGroupId());
 
         // 画完置空
         stCoord = null;
@@ -998,10 +1027,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 startActivity(intent);
                 break;
             case R.id.search:
-                Toast.makeText(MainActivity.this,"Search",Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Search", Toast.LENGTH_SHORT).show();
                 break;
             case R.id.voice:
-                Toast.makeText(MainActivity.this,"Voice",Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Voice", Toast.LENGTH_SHORT).show();
                 break;
             default:
                 break;
@@ -1043,7 +1072,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void scanLeDevice(final boolean enable, long time) {
-        if (enable && time == 0){//enable =true就是说要开始扫描
+        if (enable && time == 0) {//enable =true就是说要开始扫描
             //持续扫描
             mBluetoothAdapter.startLeScan(mLeScanCallback);//这句就是开始扫描了
             isScanning = true;
@@ -1120,7 +1149,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                     mIBeaconList.clear();
                     break;
                 case 2://定位成功
-                    message="定位成功";
+                    message = "定位成功";
                     textViewBottomMessage.setText(message);
                     //添加定位标记
                     locationMarker();
@@ -1301,6 +1330,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         setupTargetLine(groupId);
     }
+
     /**
      * 开始模拟行走路线
      *
@@ -1311,6 +1341,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mLocationAPI.setupTargetLine(points, groupId);
         mLocationAPI.start();
     }
+
     /**
      * 动画旋转
      */
@@ -1319,6 +1350,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             mFMMap.setRotateAngle(angle);
         }
     }
+
     /**
      * 移动至中心点,如果中心与屏幕中心点距离大于20米，将移动
      *
@@ -1363,8 +1395,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 public void run() {
                     String info = getResources().getString(R.string.label_walk_format, 0f,
                             0, "到达目的地");
-                    Toast.makeText(MainActivity.this,"到达目的地",Toast.LENGTH_SHORT).show();
-                    textViewBottomMessage.setText("到达目的地");
+                    //Toast.makeText(MainActivity.this,"到达目的地",Toast.LENGTH_SHORT).show();
+                    mKqwSpeechCompound.speaking("到达目的地，导航结束");
+                    textViewBottomMessage.setText("到达目的地，导航结束");
                     //Log.d("Message", "info: "+"到达目的地");
                     //ViewHelper.setViewText(FMNavigationApplication.this, R.id.txt_info, info);
                 }
@@ -1388,6 +1421,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         }
         return false;
     }
+
     /**
      * 设置动画按钮是否可以使用
      *
@@ -1401,6 +1435,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             }
         });
     }
+
     /**
      * 设置缩放动画
      *
@@ -1411,6 +1446,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             mFMMap.setZoomLevel(MAP_NORMAL_LEVEL, true);
         }
     }
+
     /**
      * 填充导航线段点
      */
@@ -1458,7 +1494,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         String loadMessage = "距离：" + (int) sceneRouteLength + "米  " + "大约需要" + time + "分钟";
         textViewBottomMessage.setText(loadMessage);
 
-        String text="前往："+Destination.name;
+        String text = "前往：" + Destination.name;
 //        TextView textView = ViewHelper.getView(FMNavigationDistance.this, R.id.txt_info);
 //        textView.setText(text);
 
@@ -1475,7 +1511,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         go_there.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast.makeText(MainActivity.this, "开始导航", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "开始导航", Toast.LENGTH_SHORT).show();
+                mKqwSpeechCompound.speaking("导航开始！");
                 startWalkingRouteLine();
                 clearLocationMarker();
                 snackbar.dismiss();
@@ -1547,10 +1584,11 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         moveToCenter(mLastMoveCoord);
     }
 
-    private void isLocationMarker(int groupId){
+    private void isLocationMarker(int groupId) {
         boolean visible = mLocationAPI.getGroupId() == groupId;
         mHandledMarker.setVisible(visible);
     }
+
     /**
      * 判断定位点是否应该处于屏幕中央
      */
@@ -1665,18 +1703,28 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         textViewBottomMessage.setText(info);
 //        ViewHelper.setViewText(FMNavigationApplication.this, R.id.txt_info, info);
 
-//        if(descriptionChanged(description)&&!mKqwSpeechCompound.isSpeaking()){
-//            mKqwSpeechCompound.speaking(description);
-//        }
+        if (descriptionChanged(description) && !mKqwSpeechCompound.isSpeaking()) {
+            mKqwSpeechCompound.speaking(description);
+        }
     }
 
-//    private boolean descriptionChanged(String description) {
-//        if(test!=description){
-//            test=description;
-//            return true;
-//        }
-//        return false;
-//    }
+    /**
+     * 判断路径提示信息是否有更新
+     *
+     * @param description
+     * @return
+     */
+    private boolean descriptionChanged(String description) {
+//        Log.d(TAG, "updateWalkRouteLine: sdescriptionChange:"+sdescriptionChange);
+//        Log.d(TAG, "updateWalkRouteLine: sdescriptionChange==descroption:"+(sdescriptionChange==description));
+
+        if (!sdescriptionChange.equals(description) || sdescriptionChange == null) {
+            sdescriptionChange = description;
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     /**
      * 清理所有的线与图层
@@ -1752,7 +1800,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         stImageLayer.addMarker(imageMarker);
     }
 
-    protected void addStartImageMaeker(){
+    protected void addStartImageMaeker() {
         FMImageMarker imageMarker = ViewHelper.buildImageMarker(getResources(), stCoord.getMapCoord(), R.drawable.start);
         stImageLayer.addMarker(imageMarker);
     }
@@ -1806,8 +1854,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //处理后的iBeacon信息，一个iBeacon对应一条数据
         List<iBeacon> answerIBeaconList = new ArrayList<>();
 
-        if (mIBeaconList.size() == 0) {
-            Toast.makeText(contextMain, "您当前环境暂不支持室内定位", Toast.LENGTH_SHORT).show();
+        if(mIBeaconList.size()==0){
+            handler.sendEmptyMessage(5);
+            Toast.makeText(MainActivity.this, "您当前环境暂不支持定位", Toast.LENGTH_SHORT).show();
             Location.isProblem = true;
             return;
         }
@@ -1820,7 +1869,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 //首次在该位置接收到某iBeacon信号
                 count++;
                 iBeaconMacList.add(item.getBluetoothAddress());
-                iBeacons miBeacons=new iBeacons(item);
+                iBeacons miBeacons = new iBeacons(item);
                 miBeacons.rssiList.add(String.valueOf(item.getRssi()));
                 iBeaconsList.add(miBeacons);
             } else {//非首次在该位置接收到某iBeacon信号
@@ -1897,8 +1946,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                             Toast.makeText(contextMain, "定位成功", Toast.LENGTH_SHORT).show();
                             handler.sendEmptyMessage(2);
                         } else {
-                            handler.sendEmptyMessage(5);
                             Toast.makeText(contextMain, "您当前环境暂不支持定位", Toast.LENGTH_SHORT).show();
+                            handler.sendEmptyMessage(5);
                         }
                     } else {
                         Toast.makeText(contextMain, "上传失败，数据格式错误", Toast.LENGTH_LONG).show();
@@ -1957,7 +2006,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             }
 
             Location.mapCoord.setGroupId(Integer.valueOf(floor));
-            Location.mapCoord.setMapCoord(new FMMapCoord(Double.valueOf(x),Double.valueOf(y)));
+            Location.mapCoord.setMapCoord(new FMMapCoord(Double.valueOf(x), Double.valueOf(y)));
 
             Log.d(TAG, "dealWithResponse: groupId:" + Location.mapCoord.getGroupId());
             Log.d(TAG, "dealWithResponse: x:" + x);
@@ -1972,6 +2021,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
     /**
      * 格式化iBeaconList的信息
+     *
      * @param iBeaconList
      * @return
      */
