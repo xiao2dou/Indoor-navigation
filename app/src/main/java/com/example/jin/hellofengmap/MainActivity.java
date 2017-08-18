@@ -21,6 +21,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
@@ -395,6 +396,12 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 break;
         }
     }
+
+    public boolean onCreateOptionsMenu(Menu menu){
+        getMenuInflater().inflate(R.menu.toolbar,menu);
+        return true;
+    }
+
 
     /**
      * 加载地图数据
@@ -989,6 +996,12 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             case android.R.id.home:
                 Intent intent = new Intent(MainActivity.this, MySettingActivity.class);
                 startActivity(intent);
+                break;
+            case R.id.search:
+                Toast.makeText(MainActivity.this,"Search",Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.voice:
+                Toast.makeText(MainActivity.this,"Voice",Toast.LENGTH_SHORT).show();
                 break;
             default:
                 break;
