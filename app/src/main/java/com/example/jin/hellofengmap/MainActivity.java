@@ -78,6 +78,7 @@ import com.fengmap.android.widget.FM3DControllerButton;
 import com.fengmap.android.widget.FMFloorControllerComponent;
 import com.fengmap.android.widget.FMSwitchFloorComponent;
 import com.fengmap.android.widget.FMZoomComponent;
+
 import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechUtility;
 
@@ -291,7 +292,6 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     private String sdescriptionChange = "";
 
-    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -438,8 +438,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mapView = (FMMapView) findViewById(R.id.mapview);
         mFMMap = mapView.getFMMap();//获取地图操作对象
 
-        //String bid = "10347";//地图id
-        String bid = "cs201707191652";//地图id
+        String bid = "10347";//地图id
+        //String bid = "cs201707191652";//地图id
         //监听地图的加载状况
         mFMMap.setOnFMMapInitListener(this);
 
@@ -1912,7 +1912,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * Data:2017/7/16
      */
 
-    protected static final String IP = "192.168.1.110";
+    protected static final String IP = "192.168.1.111";
     protected static final String URL = "http://" + IP + ":80/locate";
 
     public void SendDatebase(final Context contextMain, final List<iBeacon> iBeaconList) {

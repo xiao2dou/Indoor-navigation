@@ -43,9 +43,11 @@ public class KqwSpeechCompound {
         // 上下文
         mContext = context;
         Log.d(TAG, "KqwSpeechCompound: context:"+context);
+        Log.d(TAG, "KqwSpeechCompound: mTts:"+mTts);
         // 初始化合成对象
         mTts = SpeechSynthesizer.createSynthesizer(context, mTtsInitListener);
         Log.d(TAG, "KqwSpeechCompound: mTts:"+mTts);
+        setParam();
     }
 
     /**
@@ -75,7 +77,6 @@ public class KqwSpeechCompound {
         if (TextUtils.isEmpty(text)) {
             return;
         }
-        setParam();
         int code = mTts.startSpeaking(text, mTtsListener);
         if (code != ErrorCode.SUCCESS) {
             if (code == ErrorCode.ERROR_COMPONENT_NOT_INSTALLED) {
