@@ -20,7 +20,7 @@ public class FMLocationAPI {
     private double mWalkStep;
     private Timer mTimer;
     private TimerTask mTask;
-    private long mFrameTime = 80;
+    private long mFrameTime = 300;//80
     private long mDelayTime = 50;
     private int mGroupId = -1;
 

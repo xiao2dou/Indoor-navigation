@@ -438,8 +438,13 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mapView = (FMMapView) findViewById(R.id.mapview);
         mFMMap = mapView.getFMMap();//获取地图操作对象
 
-        String bid = "10347";//地图id
-        //String bid = "cs201707191652";//地图id
+//        String bid = "10347";//地图id
+//        message="略略u百货";
+        String bid = "cs201707191652";//地图id
+        message = "计算机科学与软件学院学院楼";
+
+        textViewBottomMessage.setText(message);
+
         //监听地图的加载状况
         mFMMap.setOnFMMapInitListener(this);
 
@@ -512,7 +517,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         //导航分析
         try {
-            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("10347");
+            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("cs201707191652");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (FMObjectException e) {
@@ -650,7 +655,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         //导航分析
         try {
-            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("10347");
+            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("cs201707191652");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (FMObjectException e) {
@@ -839,6 +844,12 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
                 mClickedModel.setSelected(false);
             }
             final FMModel model = (FMModel) node;
+            //Log.d("FMModel", "onClick: Id: "+model.getDataType());
+            if(model.getDataType()==300000){
+                //Log.d("FMModel", "onClick: is Click id300000");
+                return true;
+            }
+
             mClickedModel = model;
 
             model.setSelected(true);
@@ -1257,11 +1268,13 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
             mLocationMarker.setMarkerWidth(90);
             mLocationMarker.setMarkerHeight(90);
             mLocationLayer.addMarker(mLocationMarker);
+            moveToCenter(Location.mapCoord.getMapCoord());
         } else {
             //更新定位点位置和方向
             Log.d(TAG, "updateLocationMarker: update");
             float angle = 0;
             mLocationMarker.updateAngleAndPosition(angle, Location.mapCoord.getMapCoord());
+            moveToCenter(Location.mapCoord.getMapCoord());
         }
     }
 
@@ -1282,7 +1295,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 开始分析导航
      */
     private void analyzeNavigation() {
-
+        mNaviAnalyser.getNaviResults().clear();
         int type = mNaviAnalyser.analyzeNavi(stCoord.getGroupId(), stCoord.getMapCoord(),
                 endCoord.getGroupId(), endCoord.getMapCoord(),
                 FMNaviAnalyser.FMNaviModule.MODULE_SHORTEST);
@@ -1775,10 +1788,18 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      */
     protected void addLineMarker() {
         ArrayList<FMNaviResult> results = mNaviAnalyser.getNaviResults();
+
+        for(FMNaviResult r:results){
+            Log.d("PathData", "addLineMarker: "+"GroupId: "+r.getGroupId()+"坐标: "+r.getPointList());
+        }
+
         // 填充导航数据
         ArrayList<FMSegment> segments = new ArrayList<>();
         for (FMNaviResult r : results) {
             int groupId = r.getGroupId();
+//            if(groupId==2){
+//                continue;
+//            }
             FMSegment s = new FMSegment(groupId, r.getPointList());
             segments.add(s);
         }
