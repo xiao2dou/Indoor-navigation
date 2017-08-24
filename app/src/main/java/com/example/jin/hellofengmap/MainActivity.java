@@ -46,6 +46,7 @@ import com.fengmap.android.FMErrorMsg;
 import com.fengmap.android.FMMapSDK;
 import com.fengmap.android.analysis.navi.FMNaviAnalyser;
 import com.fengmap.android.analysis.navi.FMNaviResult;
+import com.fengmap.android.analysis.search.FMSearchAnalyser;
 import com.fengmap.android.data.OnFMDownloadProgressListener;
 import com.fengmap.android.exception.FMObjectException;
 import com.fengmap.android.map.FMMap;
@@ -107,9 +108,19 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     public static String mainPhone = new String("电话");
     public static String mainGender = new String("性别");
     /**
+     * 地图id
+     */
+    //String bid="10347";
+    String bid = "cs201707191652";
+    /**
+     * 地图名称
+     */
+    //String mapName="略略uu百货";
+    String mapName="计算机科学与软件学院学院楼";
+    /**
      * 地图
      */
-    FMMap mFMMap;
+    static FMMap mFMMap;
     /**
      * 地图容器
      */
@@ -291,6 +302,10 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * 语音辅助字符串
      */
     private String sdescriptionChange = "";
+    /**
+     * 搜索分析对象
+     */
+    protected static FMSearchAnalyser mSearchAnalyser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -438,10 +453,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         mapView = (FMMapView) findViewById(R.id.mapview);
         mFMMap = mapView.getFMMap();//获取地图操作对象
 
-//        String bid = "10347";//地图id
-//        message="略略u百货";
-        String bid = "cs201707191652";//地图id
-        message = "计算机科学与软件学院学院楼";
+        message=mapName;
 
         textViewBottomMessage.setText(message);
 
@@ -517,7 +529,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         //导航分析
         try {
-            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("cs201707191652");
+            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById(bid);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (FMObjectException e) {
@@ -655,7 +667,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
 
         //导航分析
         try {
-            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById("cs201707191652");
+            mNaviAnalyser = FMNaviAnalyser.getFMNaviAnalyserById(bid);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (FMObjectException e) {
@@ -1035,11 +1047,13 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home:
-                Intent intent = new Intent(MainActivity.this, MySettingActivity.class);
-                startActivity(intent);
+                Intent intentHome = new Intent(MainActivity.this, MySettingActivity.class);
+                startActivity(intentHome);
                 break;
             case R.id.search:
                 Toast.makeText(MainActivity.this, "Search", Toast.LENGTH_SHORT).show();
+//                Intent intentSearch=new Intent(MainActivity.this,SearchActivity.class);
+//                startActivity(intentSearch);
                 break;
             case R.id.voice:
                 Toast.makeText(MainActivity.this, "Voice", Toast.LENGTH_SHORT).show();
@@ -1340,6 +1354,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         if (groupId != mFMMap.getFocusGroupId()) {
             mFMMap.setFocusByGroupId(groupId, null);
             handler.sendEmptyMessage(WHAT_LOCATE_SWITCH_GROUP);
+
         }
 
         setupTargetLine(groupId);
@@ -1569,6 +1584,9 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         int groupSize = mFMMap.getFMMapInfo().getGroupSize();
         int position = groupSize - mFMMap.getFocusGroupId();
         //mSwitchFloorComponent.setSelected(position);
+
+        //更新楼层控制组件
+        updateFloorButton(mFMMap.getFocusGroupId());
     }
 
     /**

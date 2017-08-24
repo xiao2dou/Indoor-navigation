@@ -4,10 +4,8 @@
 
     <uses-permission android:name="android.permission.BLUETOOTH"/>
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-    <!--Android6.0以上开启蓝牙需要位置权限-->
+    <!-- Android6.0以上开启蓝牙需要位置权限 -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-
-
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
@@ -31,8 +29,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".MySettingActivity"></activity>
-        <activity android:name=".PersonInfoActivity"></activity>
+        <activity android:name=".MySettingActivity"/>
+        <activity android:name=".PersonInfoActivity"/>
+        <activity android:name=".SearchActivity">
+        </activity>
     </application>
 
 </manifest>
