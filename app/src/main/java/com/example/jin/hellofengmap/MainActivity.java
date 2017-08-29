@@ -350,6 +350,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
         //初始化蜂鸟地图SDK
         FMMapSDK.init(getApplication());
 
+        //Toast.makeText(MainActivity.this,"SHA1:"+FMMapSDK.getSha1Value(),Toast.LENGTH_SHORT).show();
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -555,7 +557,8 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
     @Override
     public void onMapInitFailure(String path, int errorCode) {
         //TODO 可以提示用户地图加载失败原因，进行地图加载失败处理
-        Toast.makeText(this, "加载地图失败，请检查网络设置", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "加载地图失败，请检查网络设置."+FMErrorMsg.getErrorMsg(errorCode), Toast.LENGTH_SHORT).show();
+
     }
 
     /**
@@ -1951,7 +1954,7 @@ public class MainActivity extends AppCompatActivity implements OnFMMapInitListen
      * Data:2017/7/16
      */
 
-    protected static final String IP = "192.168.1.111";
+    protected static final String IP = "192.168.1.107";
     protected static final String URL = "http://" + IP + ":80/locate";
 
     public void SendDatebase(final Context contextMain, final List<iBeacon> iBeaconList) {
