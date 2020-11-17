@@ -9,31 +9,31 @@
 ## 界面
 主界面（单楼层）：
 
-![主界面1](images/Screenshot_2020-11-17-23-53-12-281_com.example.jin.hellofengmap.jpg)
+<img src="images/Screenshot_2020-11-17-23-53-12-281_com.example.jin.hellofengmap.jpg" width="50%">
 
 主界面（多楼层）：
 
-![主界面2](images/Screenshot_2020-11-17-23-53-34-287_com.example.jin.hellofengmap.jpg)
+<img src="images/Screenshot_2020-11-17-23-53-34-287_com.example.jin.hellofengmap.jpg" width="50%">
 
 点击定位按钮，开始定位，扫描附近的iBeacon信号，预处理后上传服务器：
 
-![开始定位](images/Screenshot_2020-11-17-23-53-55-404_com.example.jin.hellofengmap.jpg)
+<img src="images/Screenshot_2020-11-17-23-53-55-404_com.example.jin.hellofengmap.jpg" width="50%">
 
 定位失败提示，由于扫描到0个iBeacon（小于5个），提示定位失败，当前环境不支持定位：
 
-![定位失败](images/Screenshot_2020-11-17-23-55-03-646_com.example.jin.hellofengmap.jpg)
+<img src="images/Screenshot_2020-11-17-23-55-03-646_com.example.jin.hellofengmap.jpg" width="50%">
 
 定位成功，后台计算后返回用户当前位置，选择目的地后开始导航（找到以前资料中的图片，清晰度有问题）：
 
-![导航路线](images/图片1.png)
+<img src="images/图片1.png" width="50%">
 
 导航中，实时更新位置，并语音播报路线提示信息：
 
-![导航中](images/图片2.png)
+<img src="images/图片2.png" width="50%">
 
 到达目的地：
 
-![到达目的地](images/图片3.png)
+<img src="images/图片3.png" width="50%">
 
 
 ## 使用方法
