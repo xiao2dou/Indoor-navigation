@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/Indoor-navigation.iml" filepath="$PROJECT_DIR$/.idea/Indoor-navigation.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Indoor-navigation.iml" filepath="$PROJECT_DIR$/.idea/modules/Indoor-navigation.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Indoor-navigation.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Indoor-navigation.app.iml" />
     </modules>
   </component>
